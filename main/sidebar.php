@@ -41,69 +41,72 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             </a>
         </li>
 
-        <li>
-            <button id="management-toggle" class="menu-button">
-                <span>
-                    <i class="fa-solid fa-chart-simple"></i>
-                    Reports
-                </span>
-                <i id="management-arrow"
-                   class="fa-solid fa-chevron-down"></i>
-            </button>
+        <?php
+            $reportPages = ['trend.php', 'maintenance.php', 'downtime.php', 'lifecycle.php'];
+            $isReportPage = in_array($currentPage, $reportPages);?>
 
-            <ul id="management-dropdown" class="submenu">
-                <li>
-                    <a href="#">
-                        <i class="fa-solid fa-user-graduate"></i>
-                        Trend Analysis
-                    </a>
-                </li>
+            <li>
+                <button id="management-toggle" class="menu-button">
+                    <span>
+                        <i class="fa-solid fa-chart-simple"></i> Reports</span>
+                    <i id="management-arrow" class="fa-solid fa-chevron-down <?= $isReportPage ? 'rotate' : '' ?>"></i>
+                </button>
 
-                <li>
-                    <a href="#">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                        Maintenance Analysis
-                    </a>
-                </li>
+                <ul id="management-dropdown" class="submenu <?= $isReportPage ? 'show' : '' ?>">
+                    <li>
+                        <a href="trend.php" class="<?= $currentPage == 'trend.php' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line"></i> Trend Analysis</a>
+                    </li>
 
-                <li>
-                    <a href="#">
-                        <i class="fa-solid fa-book"></i>
-                        Downtime Analysis
-                    </a>
-                </li>
+                    <li>
+                        <a href="maintenance.php"
+                        class="<?= $currentPage == 'maintenance.php' ? 'active' : '' ?>">
+                            <i class="fa-solid fa-screwdriver-wrench"></i>
+                            Maintenance Analysis
+                        </a>
+                    </li>
 
-                  <li>
-                    <a href="#">
-                        <i class="fa-solid fa-book"></i>
-                        LifeCycle Score
-                    </a>
-                </li>
+                    <li>
+                        <a href="downtime.php"
+                        class="<?= $currentPage == 'downtime.php' ? 'active' : '' ?>">
+                            <i class="fa-solid fa-clock"></i>
+                            Downtime Analysis
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="lifecycle.php"
+                        class="<?= $currentPage == 'lifecycle_score.php' ? 'active' : '' ?>">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            LifeCycle Score
+                        </a>
+                    </li>
+
+                </ul>
+            </li>
+
             </ul>
-        </li>
 
-    </ul>
+            <!--to yung sa profile-->
+            <div class="sidebar-profile">
+                <div class="profile-icon">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+                <div class="profile-info">
+                    <strong>Mang Juan</strong>  <!--nakadepende to sa database sa user--->
+                    <span>Admin</span>      <!--nakadepende to sa database--->
+                </div>
+                <i class="fa-solid fa-chevron-up profile-arrow"></i> <!--bagong tab siguro para dito-->
+            </div>
 
-    <div class="sidebar-profile">
-        <div class="profile-icon">
-            <i class="fa-solid fa-user"></i>
-        </div>
-        <div class="profile-info">
-            <strong>Mang Juan</strong>  <!--nakadepende to sa database sa user--->
-            <span>Admin</span>      <!--nakadepende to sa database--->
-        </div>
-        <i class="fa-solid fa-chevron-up profile-arrow"></i> <!--bagong tab siguro para dito-->
-    </div>
+    </aside>
 
-</aside>
+            <script>
+                const toggle = document.getElementById('management-toggle');
+                const dropdown = document.getElementById('management-dropdown');
+                const arrow = document.getElementById('management-arrow');
 
-<script>
-const toggle = document.getElementById('management-toggle');
-const dropdown = document.getElementById('management-dropdown');
-const arrow = document.getElementById('management-arrow');
-
-toggle.onclick = () => {
-    dropdown.classList.toggle('show');
-    arrow.classList.toggle('rotate');
-};
-</script>
+                toggle.onclick = () => {
+                    dropdown.classList.toggle('show');
+                    arrow.classList.toggle('rotate');
+                };
+            </script>

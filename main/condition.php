@@ -245,6 +245,7 @@
                         </tbody>
                     </table>
                 </div>
+
                 <!-- eto pagination -->
                 <div class="pagination">
                     <button class="pagination-btn"><i class="fa-solid fa-chevron-left"></i>Previous</button>

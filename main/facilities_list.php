@@ -227,6 +227,6 @@
             } else {
                 echo "File NOT found: " . $modal;
         }?>
-
+    </main>
 </body>
 </html>
