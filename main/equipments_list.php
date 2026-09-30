@@ -79,10 +79,11 @@
                     </span>
                 </td>
                 <td>
-                    <button class="view-button">
+                     <a href="viewequip.php">
+                        <button class="view-button">
                         <i class="fa-solid fa-eye"></i>
                         View
-                    </button>
+                    </button></a>  
                 </td>
             </tr>
 
@@ -133,10 +134,11 @@
                     </span>
                 </td>
                 <td>
-                    <button class="view-button">
+                    <a href="">
+                        <button class="view-button">
                         <i class="fa-solid fa-eye"></i>
                         View
-                    </button>
+                    </button></a>   
                 </td>
             </tr>
 

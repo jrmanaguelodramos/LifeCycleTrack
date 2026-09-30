@@ -120,7 +120,8 @@
                     </tr>
                 </thead>
 
-                <tbody> <!--Palitan nalang yung mga values-->
+                 <!--sample data-->
+                <tbody>
                     <tr>
                         <td>09-20-2026</td>
                         <td>Printer</td>

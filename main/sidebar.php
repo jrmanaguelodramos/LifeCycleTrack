@@ -28,7 +28,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         </li>
 
         <li>
-            <a href="equipments_list.php"class="<?= $currentPage == 'equipments_list.php' ? 'active' : '' ?>">
+            <?php
+                $equipmentPages = ['equipments_list.php', 'viewequip.php'];
+            ?>
+           <a href="equipments_list.php"
+            class="<?= in_array($currentPage, $equipmentPages) ? 'active' : '' ?>">
                 <i class="fa-solid fa-screwdriver-wrench"></i>
                 <span>Equipment</span>
             </a>
