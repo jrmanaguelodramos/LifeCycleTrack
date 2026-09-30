@@ -1,0 +1,219 @@
+.sidebar { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 256px; 
+    height: 100vh; 
+    padding: 20px 16px; 
+    color: white; 
+    background: linear-gradient( 
+        to bottom, 
+        #144C7F, 
+        #155B92 50%, 
+        #144C7F 
+    ); 
+ 
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15); 
+} 
+ 
+.sidebar-header { 
+    padding: 12px; 
+    margin-bottom: 10px; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+} 
+ 
+.sidebar-header h2 { 
+    margin: 0; 
+    font-size: 20px; 
+} 
+ 
+.sidebar-header p { 
+    margin: 4px 0 0; 
+    font-size: 14px; 
+    color: #dbeafe; 
+} 
+ 
+.sidebar-menu { 
+    list-style: none; 
+    padding: 0; 
+    margin: 0; 
+} 
+ 
+.sidebar-menu li { 
+    margin-bottom: 2px; 
+} 
+ 
+.sidebar-menu a, 
+.menu-button { 
+    width: 100%; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    padding: 6px 8px; 
+    border: none; 
+    border-radius: 8px; 
+    color: white; 
+    background: transparent; 
+    text-decoration: none; 
+    font-size: 15px; 
+    cursor: pointer; 
+    box-sizing: border-box; 
+    font-weight: 700;
+
+    transition: 0.2s ease;
+} 
+ 
+.sidebar-menu i { 
+    width: 44px; 
+    height: 44px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    background: #254F74; 
+    color: #BED4E4; 
+    border-radius: 10px; 
+    flex-shrink: 0; 
+    font-size: 20px;
+
+    transition: 0.2s ease;
+} 
+
+.sidebar-menu a.active { 
+    background: #FFFFFF; 
+    color: #155B92; 
+} 
+
+.sidebar-menu a.active i {
+    background: #254F74;
+    color: #BED4E4;
+}
+
+.sidebar-menu a:hover,
+.menu-button:hover { 
+    background: #FFFFFF; 
+    color: #155B92; 
+} 
+
+.sidebar-menu a:hover i,
+.menu-button:hover i { 
+    background: #254F74; 
+    color: white; 
+} 
+ 
+.menu-button { 
+    justify-content: space-between; 
+} 
+ 
+.menu-button span { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+} 
+ 
+.submenu { 
+    display: none; 
+    list-style: none; 
+    padding: 5px 0 5px 32px; 
+    margin: 0; 
+} 
+ 
+.submenu.show { 
+    display: block; 
+} 
+ 
+.submenu a { 
+    padding: 6px 8px; 
+    font-size: 14px; 
+} 
+ 
+#management-arrow { 
+    width: auto; 
+    height: auto; 
+    background: transparent; 
+    color: #BED4E4; 
+    border-radius: 0; 
+    transition: transform 0.2s, color 0.2s; 
+} 
+
+.menu-button:hover #management-arrow {
+    background: transparent;
+    color: #155B92;
+}
+
+#management-arrow.rotate { 
+    transform: rotate(180deg); 
+}
+
+.sidebar-profile {
+    position: absolute;
+    bottom: 20px;
+    left: 12px;
+    right: 12px;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 8px 10px;
+
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 10px;
+
+    color: white;
+}
+
+.profile-icon {
+    width: 36px;
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #BED4E4;
+    color: #6B8090;
+
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.profile-icon i {
+    width: auto;
+    height: auto;
+
+    background: transparent;
+    color: #6B8090;
+
+    font-size: 18px;
+}
+
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-info strong {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.profile-info span {
+    font-size: 9px;
+    color: #BED4E4;
+}
+
+
+.profile-arrow {
+    width: auto !important;
+    height: auto !important;
+    cursor: pointer;
+    background: transparent !important;
+    color: #BED4E4 !important;
+
+    font-size: 12px !important;
+}

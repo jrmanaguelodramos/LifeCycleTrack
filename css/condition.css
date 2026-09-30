@@ -1,0 +1,299 @@
+.condition-table-container {
+    width: 100%;
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+
+    background: white;
+    border-radius: 8px;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+}
+
+.condition-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 16px;
+}
+
+.condition-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #155B92;
+    color: white;
+}
+
+.condition-table th {
+    padding: 14px 20px;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.condition-table th i {
+    margin-right: 7px;
+}
+
+.condition-table td {
+    padding: 14px 20px;
+    text-align: center;
+    border-bottom: 1px solid #d1d1d1;
+    color: black;
+}
+
+.condition-table tbody tr {
+    height: 58px;
+}
+
+.condition-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.condition {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-width: 108px;
+    padding: 6px 15px;
+    border-radius: 20px;
+    font-weight: 700;
+    color: #111;
+}
+
+.condition span {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
+
+.condition.good {
+    background: #b7ffbf;
+}
+
+.condition.good span {
+    background: #2fbd5b;
+}
+
+.condition.fair {
+    background: #ffd7b0;
+}
+
+.condition.fair span {
+    background: #ff7900;
+}
+
+.condition.poor {
+    background: #ffb5b8;
+}
+
+.condition.poor span {
+    background: #ff0000;
+}
+
+.view-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 7px 17px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: #155B92;
+    color: white;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.view-button:hover {
+    background: #104a78;
+}
+
+.view-button i {
+    font-size: 90px;
+}
+
+.condition-table-container {
+    width: 100%;
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.20);
+}
+
+.condition-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.condition-table thead {
+    background: #155B92;
+    color: white;
+}
+
+.condition-table th {
+    padding: 14px 20px;
+    text-align: center;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.condition-table th i {
+    margin-right: 7px;
+}
+
+.condition-table td {
+    padding: 14px 20px;
+    text-align: center;
+    border-bottom: 1px solid #d1d1d1;
+    color: #303030;
+}
+
+.condition-table tbody tr {
+    height: 58px;
+}
+
+.condition-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.condition {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    min-width: 108px;
+    padding: 6px 15px;
+
+    border-radius: 20px;
+
+    font-weight: 700;
+    color: #111;
+}
+
+.condition span {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
+
+.condition.good {
+    background: #b7ffbf;
+}
+
+.condition.good span {
+    background: #2fbd5b;
+}
+
+.condition.fair {
+    background: #ffd7b0;
+}
+
+.condition.fair span {
+    background: #ff7900;
+}
+
+.condition.poor {
+    background: #ffb5b8;
+}
+
+.condition.poor span {
+    background: #ff0000;
+}
+
+.view-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    padding: 7px 17px;
+
+    border: none;
+    border-radius: 8px;
+
+    background: #155B92;
+    color: white;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+.view-button:hover {
+    background: #104a78;
+}
+
+.view-button i {
+    font-size: 15px;
+}
+
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 20px;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+}
+
+.pagination-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    padding: 7px 12px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+
+    background: white;
+    color: #374151;
+
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.pagination-btn:hover {
+    background: #f3f4f6;
+}
+
+.pagination-number {
+    width: 32px;
+    height: 32px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+
+    background: white;
+    color: #374151;
+
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.pagination-number.active {
+    background: #155B92;
+    color: white;
+    border-color: #155B92;
+}
+
+.pagination-number:hover {
+    background: #e5eef5;
+    color: #104a78 ;
+}
+

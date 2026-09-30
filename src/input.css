@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@source "../main/dashboard.php";
+
+@theme {
+    --color-brand-primary: #1e40af;
+    --color-brand-secondary: #0ea5e9;
+    --color-custom-dark: #1e40af;
+    --font-display: "Poppins", "sans-serif";
+}
+
+
