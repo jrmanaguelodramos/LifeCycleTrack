@@ -221,14 +221,8 @@
   .inset-0 {
     inset: 0px;
   }
-  .top-2 {
-    top: calc(var(--spacing) * 2);
-  }
   .top-2\.5 {
     top: calc(var(--spacing) * 2.5);
-  }
-  .left-2 {
-    left: calc(var(--spacing) * 2);
   }
   .left-2\.5 {
     left: calc(var(--spacing) * 2.5);
@@ -308,9 +302,6 @@
   .inline-block {
     display: inline-block;
   }
-  .table {
-    display: table;
-  }
   .h-1 {
     height: var(--spacing);
   }
@@ -326,14 +317,8 @@
   .h-13 {
     height: calc(var(--spacing) * 13);
   }
-  .h-33 {
-    height: calc(var(--spacing) * 33);
-  }
   .h-33\.75 {
     height: calc(var(--spacing) * 33.75);
-  }
-  .h-38 {
-    height: calc(var(--spacing) * 38);
   }
   .h-38\.75 {
     height: calc(var(--spacing) * 38.75);
@@ -341,26 +326,14 @@
   .h-40 {
     height: calc(var(--spacing) * 40);
   }
-  .h-47 {
-    height: calc(var(--spacing) * 47);
-  }
   .h-47\.5 {
     height: calc(var(--spacing) * 47.5);
-  }
-  .w-1 {
-    width: var(--spacing);
   }
   .w-1\/2 {
     width: calc(1 / 2 * 100%);
   }
-  .w-2 {
-    width: calc(var(--spacing) * 2);
-  }
   .w-2\/5 {
     width: calc(2 / 5 * 100%);
-  }
-  .w-3 {
-    width: calc(var(--spacing) * 3);
   }
   .w-3\/5 {
     width: calc(3 / 5 * 100%);
@@ -380,14 +353,8 @@
   .w-28 {
     width: calc(var(--spacing) * 28);
   }
-  .w-37 {
-    width: calc(var(--spacing) * 37);
-  }
   .w-37\.5 {
     width: calc(var(--spacing) * 37.5);
-  }
-  .w-48 {
-    width: calc(var(--spacing) * 48);
   }
   .w-48\.75 {
     width: calc(var(--spacing) * 48.75);
@@ -398,9 +365,6 @@
   .w-full {
     width: 100%;
   }
-  .max-w-207 {
-    max-width: calc(var(--spacing) * 207);
-  }
   .max-w-207\.5 {
     max-width: calc(var(--spacing) * 207.5);
   }
@@ -410,14 +374,8 @@
   .min-w-50 {
     min-width: calc(var(--spacing) * 50);
   }
-  .border-collapse {
-    border-collapse: collapse;
-  }
   .cursor-pointer {
     cursor: pointer;
-  }
-  .resize {
-    resize: both;
   }
   .resize-none {
     resize: none;
@@ -573,9 +531,6 @@
   .bg-\[\#FFD2D2\] {
     background-color: #FFD2D2;
   }
-  .bg-black {
-    background-color: var(--color-black);
-  }
   .bg-black\/60 {
     background-color: color-mix(in srgb, #000 60%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -707,9 +662,6 @@
   .text-black {
     color: var(--color-black);
   }
-  .text-blue-700 {
-    color: var(--color-blue-700);
-  }
   .text-gray-700 {
     color: var(--color-gray-700);
   }
@@ -740,9 +692,6 @@
   .text-white {
     color: var(--color-white);
   }
-  .underline {
-    text-decoration-line: underline;
-  }
   .placeholder-gray-400::placeholder {
     color: var(--color-gray-400);
   }
@@ -766,10 +715,6 @@
   .shadow-sm {
     --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
-  .outline {
-    outline-style: var(--tw-outline-style);
-    outline-width: 1px;
   }
   .transition {
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
@@ -807,9 +752,6 @@
     }
     .hover\:bg-slate-100:hover {
       background-color: var(--color-slate-100);
-    }
-    .hover\:text-blue-900:hover {
-      color: var(--color-blue-900);
     }
     .hover\:text-gray-200:hover {
       color: var(--color-gray-200);
@@ -921,11 +863,6 @@
   inherits: false;
   initial-value: 0 0 #0000;
 }
-@property --tw-outline-style {
-  syntax: "*";
-  inherits: false;
-  initial-value: solid;
-}
 @property --tw-duration {
   syntax: "*";
   inherits: false;
@@ -951,7 +888,6 @@
       --tw-ring-offset-width: 0px;
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
-      --tw-outline-style: solid;
       --tw-duration: initial;
     }
   }

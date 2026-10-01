@@ -83,6 +83,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <!--sample data-->
                             <tr>
                                 <td>0001</td>
                                 <td>Printer</td>
@@ -276,7 +277,7 @@
                                 </div>
                                 </div>
 
-                                <!--Condition Assessment -->
+                                <!--condition assessment -->
                                 <div>
                                 <h3 class="text-xl font-bold text-black mb-3">Condition Assessment</h3>
                                 <div class="flex items-center space-x-6">

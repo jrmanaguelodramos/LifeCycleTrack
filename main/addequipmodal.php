@@ -14,8 +14,6 @@
                     </div>
 
                     <div class="p-7">
-
-                        <!-- Basic Information -->
                         <div class="border border-slate-300 rounded-md mb-6">
                             <div class="bg-[#C5D9E8] px-4 py-2 rounded-t-md">
                                 <h3 class="font-bold text-lg text-black"><i class="fa-solid fa-newspaper mr-3"></i>Basic Information</h3>
@@ -89,15 +87,13 @@
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
-                            <!-- Additional Details -->
                             <div class="border border-slate-300 rounded-md">
-
                                 <div class="bg-[#C5D9E8] px-4 py-2 rounded-t-md">
                                     <h3 class="font-bold text-lg text-black"><i class="fa-solid fa-gear mr-3"></i>Additional Details</h3>
                                 </div>
 
                                 <div class="p-5">
-                                    <!-- sample lang tola nako malagay -->
+                                    <!-- sample lang to la nako malagay -->
                                     <div class="mb-5">
                                         <label class="block text-sm font-semibold text-[#155B92] mb-1">Condition<span class="text-red-500">*</span></label>
                                         <select name="condition" class="w-37.5 h-9 px-3 border border-[#AFC4D6] rounded-md text-sm text-[#7A9BB5] outline-none focus:border-[#155B92]">

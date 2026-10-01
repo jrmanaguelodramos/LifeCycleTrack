@@ -78,6 +78,7 @@
                         Good
                     </span>
                 </td>
+                <!--view button-->
                 <td>
                      <a href="viewequip.php">
                         <button class="view-button">

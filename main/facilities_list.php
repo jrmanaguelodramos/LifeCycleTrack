@@ -82,11 +82,14 @@
                         Good
                     </span>
                 </td>
+
+                <!--view button-->
                 <td>
-                    <button class="view-button">
+                     <a href="viewfacility.php">
+                        <button class="view-button">
                         <i class="fa-solid fa-eye"></i>
                         View
-                    </button>
+                    </button></a>  
                 </td>
             </tr>
 
