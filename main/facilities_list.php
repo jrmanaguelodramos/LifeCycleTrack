@@ -59,150 +59,150 @@
 
       <div class="facility-table-container">
 
-    <table class="facility-table">
-        <thead>
-            <tr>
-                <th><i class="fa-solid fa-id-card"></i> ID</th>
-                <th><i class="fa-solid fa-tag"></i> Name</th>
-                <th><i class="fa-solid fa-border-all"></i> Category</th>
-                <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
-                <th><i class="fa-solid fa-gear"></i> Actions</th>
-            </tr>
-        </thead>
+        <table class="facility-table">
+            <thead>
+                <tr>
+                    <th><i class="fa-solid fa-id-card"></i> ID</th>
+                    <th><i class="fa-solid fa-tag"></i> Name</th>
+                    <th><i class="fa-solid fa-location-dot"></i> Location</th>
+                    <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
+                    <th><i class="fa-solid fa-gear"></i> Actions</th>
+                </tr>
+            </thead>
 
-        <tbody>
-            <!-- sample data lang naman to -->
-            <tr>
-                <td>0001</td>
-                <td>Reception Hall</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition good">
-                        <span></span>
-                        Good
-                    </span>
-                </td>
+            <tbody>
+                <!-- sample data lang naman to -->
+                <tr>
+                    <td>0001</td>
+                    <td>Reception Hall</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
 
-                <!--view button-->
-                <td>
-                     <a href="viewfacility.php">
+                    <!--view button reference-->
+                    <td>
+                        <a href="viewfacility.php">
+                            <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button></a>  
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0002</td>
+                    <td>DayCare</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
                         <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button></a>  
-                </td>
-            </tr>
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+    
+                <tr>
+                    <td>0003</td>
+                    <td>Parking</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition fair">
+                            <span></span>
+                            Fair
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
 
-            <tr>
-                <td>0002</td>
-                <td>DayCare</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition good">
-                        <span></span>
-                        Good
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
+                <tr>
+                    <td>0004</td>
+                    <td>Health Office</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
 
-            <tr>
-                <td>0003</td>
-                <td>Parking</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition fair">
-                        <span></span>
-                        Fair
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
+                <tr>
+                    <td>0005</td>
+                    <td>Comfort Room</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition poor">
+                            <span></span>
+                            Poor
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
 
-            <tr>
-                <td>0004</td>
-                <td>Health Office</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition good">
-                        <span></span>
-                        Good
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
+                <tr>
+                    <td>0006</td>
+                    <td>Captain’s Office</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
 
-            <tr>
-                <td>0005</td>
-                <td>Comfort Room</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition poor">
-                        <span></span>
-                        Poor
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
-
-            <tr>
-                <td>0006</td>
-                <td>Captain’s Office</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition good">
-                        <span></span>
-                        Good
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
-
-            <tr>
-                <td>0007</td>
-                <td>Lobby</td>
-                <td>Facility</td>
-                <td>
-                    <span class="condition good">
-                        <span></span>
-                        Good
-                    </span>
-                </td>
-                <td>
-                    <button class="view-button">
-                        <i class="fa-solid fa-eye"></i>
-                        View
-                    </button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+                <tr>
+                    <td>0007</td>
+                    <td>Lobby</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
         <!-- edit nalang tong pagination -->
         <div class="pagination">

@@ -1,6 +1,8 @@
 <?php
-$currentPage = basename($_SERVER['PHP_SELF']);
+    $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
 
 <aside class="sidebar">
 
@@ -21,7 +23,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         </li>
 
         <li>
-            <a href="facilities_list.php" class="<?= $currentPage == 'facilities_list.php' ? 'active' : '' ?>">
+             <?php
+                $facilityPages = ['facilities_list.php', 'viewfacility.php'];
+            ?>
+            <a href="facilities_list.php" 
+            class="<?= in_array($currentPage, $facilityPages) ? 'active' : '' ?>">
                 <i class="fa-solid fa-building-circle-exclamation"></i>
                 <span>Facilities</span>
             </a>
@@ -79,7 +85,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
                     <li>
                         <a href="lifecycle.php"
-                        class="<?= $currentPage == 'lifecycle_score.php' ? 'active' : '' ?>">
+                        class="<?= $currentPage == 'lifecycle.php' ? 'active' : '' ?>">
                             <i class="fa-solid fa-chart-pie"></i>
                             LifeCycle Score
                         </a>

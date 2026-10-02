@@ -60,7 +60,7 @@
             <tr>
                 <th><i class="fa-solid fa-id-card"></i> ID</th>
                 <th><i class="fa-solid fa-tag"></i> Name</th>
-                <th><i class="fa-solid fa-border-all"></i> Category</th>
+                <th><i class="fa-solid fa-location-dot"></i>  Location</th>
                 <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
                 <th><i class="fa-solid fa-gear"></i> Actions</th>
             </tr>
@@ -71,7 +71,7 @@
             <tr>
                 <td>0001</td>
                 <td>Printer</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition good">
                         <span></span>
@@ -91,7 +91,7 @@
             <tr>
                 <td>0002</td>
                 <td>Arconditioner</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition good">
                         <span></span>
@@ -109,7 +109,7 @@
             <tr>
                 <td>0003</td>
                 <td>Generator</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition fair">
                         <span></span>
@@ -127,7 +127,7 @@
             <tr>
                 <td>0004</td>
                 <td>Water Dispenser</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition good">
                         <span></span>
@@ -146,7 +146,7 @@
             <tr>
                 <td>0005</td>
                 <td>Grass Cutter</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition poor">
                         <span></span>
@@ -164,7 +164,7 @@
             <tr>
                 <td>0006</td>
                 <td>Computer</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition good">
                         <span></span>
@@ -182,7 +182,7 @@
             <tr>
                 <td>0007</td>
                 <td>Wheel Barrow</td>
-                <td>Equipment</td>
+                <td>Secretary's Office</td>
                 <td>
                     <span class="condition good">
                         <span></span>

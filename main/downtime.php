@@ -19,7 +19,7 @@
             DownTime Analysis
         </h1>
         <p class="mt-2 text-black-100 mb-8">
-           View and Analyze trends, patterns and performance over time according to the usage of equipment and facilities 
+           View and Analyze Downtime Analysis 
         </p>
     </main>
 </body>

@@ -19,7 +19,7 @@
             LifeCycle Score
         </h1>
         <p class="mt-2 text-black-100 mb-8">
-           View and Analyze trends, patterns and performance over time according to the usage of equipment and facilities 
+          Overall Lifecycle status and performance score for this equipment or facility
         </p>
     </main>
 </body>

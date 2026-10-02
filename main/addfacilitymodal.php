@@ -14,8 +14,6 @@
                     </div>
 
                     <div class="p-7">
-
-                        <!-- Basic Information -->
                         <div class="border border-slate-300 rounded-md mb-6">
                             <div class="bg-[#C5D9E8] px-4 py-2 rounded-t-md">
                                 <h3 class="font-bold text-lg text-black"><i class="fa-solid fa-newspaper mr-3"></i>Basic Information</h3>

@@ -19,7 +19,7 @@
             Maintenance Analysis
         </h1>
         <p class="mt-2 text-black-100 mb-8">
-           View and Analyze trends, patterns and performance over time according to the usage of equipment and facilities 
+           Monitor equipment reliability, review historical repairs, and predict future maintenance needs to prevent costly downtime
         </p>
     </main>
 </body>

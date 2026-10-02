@@ -39,7 +39,7 @@
                 </div>
 
                 <p class="text-7xl font-bold text-black mt-3">
-                    69 <!--nasa database-->
+                    21 <!--nasa database-->
                 </p>
             </div>
 
@@ -57,7 +57,7 @@
                 </div>
 
                 <p class="text-7xl font-bold text-black mt-3">
-                    69 <!--nasa database-->
+                    23 <!--nasa database-->
                 </p>
             </div>
 
@@ -73,7 +73,7 @@
                 </div>
 
                 <p class="text-7xl font-bold text-red-600 text-center mt-1">
-                    69            <!--nasa database-->
+                    12            <!--nasa database-->
                 </p>
             </div>
         </div>
@@ -89,7 +89,7 @@
                 </div>
 
                 <p class="text-7xl font-bold text-red-600 text-center mt-1">
-                    69  <!--import nalang nung pinakachart-->
+                     <!--import nalang nung pinakachart-->
                 </p>
 
             </div>
@@ -102,7 +102,7 @@
                     </h2>
                 </div>
                 <p class="text-7xl font-bold text-red-600 text-center mt-1">
-                    69  <!--import nalang nung pinakachart-->
+                      <!--import nalang nung pinakachart-->
                 </p>
             </div>
         </div>
