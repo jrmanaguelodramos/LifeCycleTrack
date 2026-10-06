@@ -13,8 +13,8 @@
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
-        <h1 class="text-3xl font-bold"> Condition Assesment</h1>
-        <p class="mt-2 text-gray-700 mb-1">View and manage  the current condition  of facilities and equipment </p>
+        <h1 class="text-3xl font-bold">Equipment Condition Assesment</h1>
+        <p class="mt-2 text-gray-700 mb-1">View and manage  the current condition  of facilities </p>
 
        <div class="flex flex-row gap-5 w-full mt-6">
             <div class="w-3/5  overflow-hidden">
@@ -259,7 +259,7 @@
 
                 <!--eto yung sa right panel-->
                 <div class="w-2/5 bg-white border border-gray-200 rounded-xl  shadow-sm">
-                    <h2 class="text-xl font-semibold text-white pl-4 pt-3 pb-4 bg-[#155B92]">Facility/Equipment Details</h2>
+                    <h2 class="text-xl font-semibold text-white pl-4 pt-3 pb-4 bg-[#155B92]">Facility Details</h2>
                     <div class="ml-4">
                              <form id="assessmentForm" class="p-4 space-y-6">
                                 <div class="flex items-center space-x-4">
@@ -283,16 +283,16 @@
                                 <div class="flex items-center space-x-6">
 
                                     <label class="flex items-center space-x-2  text-sm font-bold text-black">
-                                        <input type="radio" name="condition" value="Good" checked class="w-6 h-6 cursor-pointer text-green-500 accent-green-500">
+                                        <input type="radio" name="condition" value="Good" checked class="w-5 h-5 cursor-pointer text-green-500 accent-green-500">
                                         <span class="text-l">Good</span>
                                     </label>
 
                                     <label class="flex items-center space-x-2 text-sm font-bold text-black">
-                                        <input type="radio" name="condition" value="Fair" class="w-6 h-6  cursor-pointer text-orange-500 accent-orange-500">
+                                        <input type="radio" name="condition" value="Fair" class="w-5 h-5  cursor-pointer text-orange-500 accent-orange-500">
                                         <span class="text-l">Fair</span>
                                     </label>
                                     <label class="flex items-center space-x-2 text-sm font-bold text-black">
-                                        <input type="radio" name="condition" value="Poor" class="w-6 h-6  cursor-pointer text-red-500 accent-red-500">
+                                        <input type="radio" name="condition" value="Poor" class="w-5 h-5  cursor-pointer text-red-500 accent-red-500">
                                         <span class="text-l">Poor</span>
                                     </label>
                                 </div>
