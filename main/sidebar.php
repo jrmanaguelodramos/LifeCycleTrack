@@ -156,30 +156,69 @@
 
     <!--profile-->
     <div class="sidebar-profile-wrapper">
-    <div id="profile-menu" class="profile-menu">
-        <a href="../auth/login.php" class="logout-btn">
-            <i class="fa-solid fa-right-from-bracket"></i>
-            <span>Logout</span>
-        </a>
-    </div>
-    <!-- Profile button -->
-    <button id="profile-toggle" class="sidebar-profile">
-        <div class="profile-icon">
-            <i class="fa-solid fa-user"></i>
-        </div>
-        
-                    <!--card copnfirmation baka makalimutan ko-->
+        <div id="profile-menu" class="profile-menu">
 
-        <div class="profile-info">
-            <!-- pa convert nalang to pag may database na -->
-            <strong>Mang Juan</strong>
-            <span>Admin</span>
+            <button type="button"
+                    id="logout-btn"
+                    class="logout-btn">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+
+            </button>
+
         </div>
-        <i id="profile-arrow"
-           class="fa-solid fa-chevron-up profile-arrow">
-        </i>
-    </button>
-</div>
+
+        <button id="profile-toggle"
+                class="sidebar-profile">
+
+            <div class="profile-icon">
+                <i class="fa-solid fa-user"></i>
+            </div>
+
+            <div class="profile-info">
+                <strong>Mang Juan</strong>
+                <span>Admin</span>
+            </div>
+
+            <i id="profile-arrow"
+            class="fa-solid fa-chevron-up profile-arrow">
+            </i>
+        </button>
+
+    </div>
+
+    <div id="logout-modal"
+        class="hidden fixed inset-0 z-[99999] items-center justify-center bg-black/40 backdrop-blur-sm">
+
+        <div class="w-[380px] rounded-2xl bg-white p-7 text-center shadow-2xl">
+
+            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[#155B92]">
+                <i class="fa-solid fa-right-from-bracket text-2xl"></i>
+            </div>
+
+            <h3 class="mb-2 text-xl font-semibold text-gray-800">
+                Confirm Logout
+            </h3>
+
+            <p class="mb-6 text-sm text-gray-500">
+                Are you sure you want to log out?
+            </p>
+
+            <div class="flex justify-center gap-3">
+
+                <button type="button"
+                        id="cancel-logout"
+                        class="w-28 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100">
+                    Cancel
+                </button>
+
+                <a href="../auth/login.php"
+                class="w-28 rounded-lg bg-[#155B92] px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-[#104a78]">
+                    Logout
+                </a>
+            </div>
+        </div>
+    </div>
 
 </aside>
 
@@ -230,6 +269,31 @@
             profileMenu.classList.toggle('show');
             profileArrow.classList.toggle('rotate');
 
+        });
+
+        //logout modal
+        const logoutBtn = document.getElementById('logout-btn');
+        const logoutModal = document.getElementById('logout-modal');
+        const cancelLogout = document.getElementById('cancel-logout');
+
+        logoutBtn.addEventListener('click', function () {
+            profileMenu.classList.remove('show');
+            profileArrow.classList.remove('rotate');
+
+            logoutModal.classList.remove('hidden');
+            logoutModal.classList.add('flex');
+        });
+
+        cancelLogout.addEventListener('click', function () {
+            logoutModal.classList.remove('flex');
+            logoutModal.classList.add('hidden');
+        });
+
+        logoutModal.addEventListener('click', function (event) {
+            if (event.target === logoutModal) {
+                logoutModal.classList.remove('flex');
+                logoutModal.classList.add('hidden');
+            }
         });
 
     </script>

@@ -3,7 +3,7 @@
 $envFile = __DIR__ . '/../.env';
 
 if (!file_exists($envFile)) {
-    die("`.env` file not found.");
+    die('.env file not found.');
 }
 
 $env = parse_ini_file($envFile);
@@ -16,13 +16,14 @@ $password = $env['DB_PASSWORD'];
 
 try {
     $pdo = new PDO(
-        "pgsql:host=$host;port=$port;dbname=$dbname",
+        "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require",
         $username,
-        $password
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]
     );
-    
-    die("Database Connected" );
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());

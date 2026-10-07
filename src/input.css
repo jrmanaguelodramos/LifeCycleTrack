@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@source "../main/dashboard.php";
+@source "../main";
+@source "../auth";
 
 @theme {
     --color-brand-primary: #1e40af;
