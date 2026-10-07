@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-gray-100 min-h-screen flex items-center justify-center bg-[url('../image.png')] bg-cover bg-no-repeat">
     <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
         <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
-
+<!--add test branch-->
     <?php if ($message): ?>
         <p class="text-red-500 text-sm mb-4">
             <?= htmlspecialchars($message) ?>
