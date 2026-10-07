@@ -4,7 +4,7 @@
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
 
-<aside class="sidebar">
+<aside class="sidebar ">
 
     <div class="sidebar-header flex items-center gap-3">
         <img src="../img/logo.png"
@@ -155,19 +155,31 @@
     </ul>
 
     <!--profile-->
-    <div class="sidebar-profile">
-
+    <div class="sidebar-profile-wrapper">
+    <div id="profile-menu" class="profile-menu">
+        <a href="../auth/login.php" class="logout-btn">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            <span>Logout</span>
+        </a>
+    </div>
+    <!-- Profile button -->
+    <button id="profile-toggle" class="sidebar-profile">
         <div class="profile-icon">
             <i class="fa-solid fa-user"></i>
         </div>
+        
+                    <!--card copnfirmation baka makalimutan ko-->
 
         <div class="profile-info">
-            <!--pa convert nalang to pag may database na-->
-            <strong>Mang Juan</strong>  
+            <!-- pa convert nalang to pag may database na -->
+            <strong>Mang Juan</strong>
             <span>Admin</span>
         </div>
-        <i class="fa-solid fa-chevron-up profile-arrow"></i>
-    </div>
+        <i id="profile-arrow"
+           class="fa-solid fa-chevron-up profile-arrow">
+        </i>
+    </button>
+</div>
 
 </aside>
 
@@ -209,4 +221,15 @@
                 reportsArrow.classList.add('rotate');
             }
         });
+
+        //rpofile
+        const profileToggle = document.getElementById('profile-toggle');
+        const profileMenu = document.getElementById('profile-menu');
+        const profileArrow = document.getElementById('profile-arrow');
+        profileToggle.addEventListener('click', function () {
+            profileMenu.classList.toggle('show');
+            profileArrow.classList.toggle('rotate');
+
+        });
+
     </script>

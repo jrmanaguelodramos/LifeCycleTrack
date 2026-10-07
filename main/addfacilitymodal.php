@@ -132,6 +132,9 @@
                         <div class="flex justify-end gap-3 mt-3">
                             <button id="clearFacilityModal" type="button" class="px-5 py-1 border-2 border-[#155B92] text-[#155B92] rounded-md font-semibold hover:bg-slate-100 cursor-pointer"><i class="fa-solid fa-x mr-2"></i>Clear</button>
                             <button id="addFacility" type="submit" class="px-5 py-1 bg-[#155B92] text-white rounded-md font-semibold hover:bg-[#124b79] cursor-pointer"><i class="fa-solid fa-circle-plus mr-2"></i>Add</button>
+
+                            <!--card copnfirmation baka makalimutan ko-->
+                            
                         </div>
                     </div>
                 </div>

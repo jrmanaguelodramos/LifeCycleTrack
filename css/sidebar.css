@@ -61,7 +61,10 @@
     font-weight: 700;
     cursor: pointer;
     box-sizing: border-box;
-    transition: 0.2s ease;
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease,
+        visibility 0.2s ease;
 }
 
  
@@ -157,68 +160,114 @@
     transform: rotate(180deg);
 }
 
-.sidebar-profile {
+.sidebar-profile-wrapper {
     position: absolute;
+    left: 15px;
+    right: 15px;
+    bottom: 15px;
+    z-index: 100;
+}
 
-    bottom: 20px;
-    left: 12px;
-    right: 12px;
-
+.sidebar-profile {
+    width: 100%;
+    height: 65px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.10);
+    color: white;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.10);
-    border-radius: 10px;
-    color: white;
+    padding: 10px 14px;
+    gap: 12px;
+    cursor: pointer;
+    text-align: left;
 }
 
 .profile-icon {
-    width: 36px;
-    height: 36px;
-
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: #d9e9f5;
+    color: #6b879b;
     display: flex;
     align-items: center;
     justify-content: center;
-
-    background: #BED4E4;
-    color: #6B8090;
-
-    border-radius: 50%;
-
     flex-shrink: 0;
 }
 
 .profile-icon i {
-    width: auto;
-    height: auto;
-    background: transparent;
-    color: #6B8090;
-    font-size: 18px;
+    font-size: 22px;
 }
 
 .profile-info {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-width: 0;
+    text-align: center;
 }
 
 .profile-info strong {
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 15px;
 }
 
 .profile-info span {
-    font-size: 9px;
-    color: #BED4E4;
+    font-size: 12px;
+    opacity: 0.8;
 }
 
 .profile-arrow {
-    width: auto !important;
-    height: auto !important;
-    cursor: pointer;
-    background: transparent !important;
-    color: #BED4E4 !important;
-    font-size: 12px !important;
+    font-size: 14px;
+    transition: transform 0.2s ease;
+}
+
+.profile-arrow.rotate {
+    transform: rotate(180deg);
+}
+
+.profile-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    background: transparent;
+    border-radius: 10px;
+    padding: 6px;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(10px);
+    transition:
+        opacity 0.2s ease,
+        transform 0.2s ease,
+        visibility 0.2s ease;
+}
+
+.profile-menu.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: 7px;
+    color: #333;
+    background: transparent;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: #f1f1f1;
+}
+
+.logout-btn i {
+    width: 20px;
+    text-align: center;
 }

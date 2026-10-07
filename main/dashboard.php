@@ -1,10 +1,10 @@
 <?php
-//session_start();
+session_start();
 
-//if (empty($_SESSION['access_token'])) {
-   // header("Location: ../auth/login.php");
-    //exit;
-//}
+if (empty($_SESSION['access_token'])) {
+    header("Location: ../auth/login.php");
+    exit;
+}
 ?>
 
 
