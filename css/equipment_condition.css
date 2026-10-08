@@ -1,0 +1,306 @@
+.condition-table tbody tr.selected-row {
+    background-color: #eff6ff;
+}
+
+.condition-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.condition-table tbody tr[style*="display: none"] {
+    display: none !important;
+}
+
+.condition-table-container {
+    overflow-x: auto;
+}
+
+.condition-table {
+    width: 100%;
+}
+
+.condition-table th,
+.condition-table td {
+    white-space: nowrap;
+}
+
+.condition-table .condition {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.condition.good > span:first-child {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #22c55e;
+}
+
+.condition.fair > span:first-child {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #f59e0b;
+}
+
+.condition.poor > span:first-child {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ef4444;
+}
+
+.assessment-panel {
+    min-width: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: 24px;
+    margin-top: 4px; 
+    background: #fff;
+    border: 1px solid #dce4ec;
+    border-radius: 16px;
+    box-shadow: none;
+    overflow: hidden;
+}
+
+.assessment-panel > h2 {
+    padding: 16px 24px;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-transform: capitalize;
+    background: #155b92;
+    color: #fff;
+    border-radius: 0;
+}
+
+.assessment-panel > div {
+    padding: 24px;
+}
+
+#assessmentForm {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+#assessmentForm > * {
+    margin: 0;
+}
+
+#assessmentForm[hidden],
+#emptyState[hidden] {
+    display: none !important;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 360px;
+    padding: 32px 24px;
+    text-align: center;
+    border: 1.5px dashed #c5d1dd;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #52657a;
+}
+
+.empty-state i {
+    font-size: 36px;
+    color: #155b92;
+    margin-bottom: 14px;
+}
+
+.empty-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f2133;
+    margin: 0 0 6px;
+}
+
+.empty-text {
+    max-width: 260px;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+#assessmentForm .min-w-0 > p:first-child {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #52657a;
+}
+
+#id {
+    font-size: 34px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    color: #0f2133;
+}
+
+#name {
+    margin-top: 2px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f2133;
+}
+
+#panelCondition {
+    margin-top: 10px;
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: #eef2f6;
+    color: #33475b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#assessmentForm h3,
+#assessmentForm label[for="notes"] {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f2133;
+    margin-bottom: 12px;
+}
+
+#assessmentForm div:has(> label input[name="condition"]) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+#assessmentForm label:has(input[name="condition"]) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 8px;
+    border: 1.5px solid #d5dee8;
+    border-radius: 12px;
+    background: #fff;
+    color: #33475b;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#assessmentForm label:has(input[name="condition"]):hover {
+    border-color: #155b92;
+}
+
+#assessmentForm label:has(input[name="condition"]:checked) {
+    border-color: #155b92;
+    background: #eaf2fa;
+    color: #0e3f6b;
+    box-shadow: 0 0 0 3px rgba(21, 91, 146, 0.15);
+}
+
+#assessmentForm label:has(input[name="condition"]:focus-visible) {
+    outline: 3px solid #155b92;
+    outline-offset: 2px;
+}
+
+#assessmentForm input[name="condition"] {
+    position: absolute !important;
+    opacity: 0;
+    width: 1px !important;
+    height: 1px !important;
+    margin: 0;
+    pointer-events: none;
+}
+
+#assessmentForm label:has(input[name="condition"]) span::before {
+    display: block;
+    margin-bottom: 6px;
+    text-align: center;
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-size: 24px;
+    line-height: 1;
+}
+
+#assessmentForm label:has(input[value="Good"]) span::before { content: "\f058"; color: #14633a; }
+#assessmentForm label:has(input[value="Fair"]) span::before { content: "\f071"; color: #8a4b00; } 
+#assessmentForm label:has(input[value="Poor"]) span::before { content: "\f057"; color: #9b1c1c; } 
+
+#notes {
+    width: 100%;
+    min-height: 130px;
+    padding: 12px 14px;
+    border: 1px solid #c5d1dd;
+    border-radius: 12px;
+    background: #fff;
+    font-size: 15px;
+    line-height: 1.5;
+    color: #0f2133;
+    resize: vertical;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+#notes::placeholder {
+    color: #7a8a9b;
+}
+
+#notes:focus {
+    outline: none;
+    border-color: #155b92;
+    box-shadow: 0 0 0 3px rgba(21, 91, 146, 0.2);
+}
+
+#assessmentForm button[type="submit"] {
+    min-height: 52px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 12px;
+    background: #155b92;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    box-shadow: none;
+    transition: background-color 0.15s ease;
+}
+
+#assessmentForm button[type="submit"]:hover {
+    background: #0e3f6b;
+}
+
+#assessmentForm button[type="submit"]:focus-visible {
+    outline: 3px solid rgba(21, 91, 146, 0.4);
+    outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+    main.ml-64 {
+        margin-left: 0;
+        padding: 20px;
+    }
+
+    .condition-layout {
+        flex-direction: column;
+    }
+
+    .condition-left,
+    .assessment-panel {
+        width: 100%;
+    }
+
+    .assessment-panel {
+        position: static;
+        margin-top: 0;
+    }
+
+    .empty-state {
+        min-height: 220px;
+    }
+}

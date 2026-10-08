@@ -253,7 +253,7 @@ function lifecycleChart(int $score, array $counts): void
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Dashboard - LifeCycle Track</title>
+    <title>Dashboard</title>
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
@@ -280,8 +280,6 @@ function lifecycleChart(int $score, array $counts): void
                 <?= e($dashboardError) ?>
             </div>
         <?php endif; ?>
-
-        <!-- Statistics -->
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
 
@@ -341,8 +339,6 @@ function lifecycleChart(int $score, array $counts): void
 
         </div>
 
-        <!-- Lifecycle Scores -->
-
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-7">
 
             <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5"
@@ -367,9 +363,7 @@ function lifecycleChart(int $score, array $counts): void
 
         </div>
 
-        <!-- Recent Activity -->
-
-        <h2 class="text-xl font-bold mb-3">Recent Activity</h2>
+        <h2 class="text-xl font-bold mb-3 mt-3">Recent Activity</h2>
 
         <div class="custom-table-container overflow-x-auto">
             <table class="custom-table w-full">
@@ -421,9 +415,7 @@ function lifecycleChart(int $score, array $counts): void
                                 </td>
                             </tr>
                         <?php endforeach; ?>
-
                     <?php endif; ?>
-
                 </tbody>
             </table>
         </div>

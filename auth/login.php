@@ -1,91 +1,71 @@
 <?php
 
-declare(strict_types=1);
 session_start();
 
-$envFile = __DIR__ . '/../.env';
-$env = is_file($envFile) ? parse_ini_file($envFile, false, INI_SCANNER_RAW) : false;
-$supabaseUrl = rtrim((string)($env['SUPABASE_URL'] ?? ''), '/');
-$supabaseKey = (string)($env['SUPABASE_KEY'] ?? '');
+$env = parse_ini_file(__DIR__ . '/../.env');
+
+$supabaseUrl = rtrim($env['SUPABASE_URL'], '/');
+$supabaseKey = $env['SUPABASE_KEY'];
 
 $message = '';
 
-if ($supabaseUrl === '' || $supabaseKey === '') {
-    $message = 'Supabase configuration is missing. Check the .env file.';
-}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $message === '') {
-    $email = trim((string)($_POST['email'] ?? ''));
-    $password = (string)($_POST['password'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    $ch = curl_init($supabaseUrl . '/auth/v1/token?grant_type=password');
+    $ch = curl_init(
+        $supabaseUrl . '/auth/v1/token?grant_type=password'
+    );
+
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
-        CURLOPT_TIMEOUT => 15,
         CURLOPT_HTTPHEADER => [
             'apikey: ' . $supabaseKey,
             'Authorization: Bearer ' . $supabaseKey,
             'Content-Type: application/json'
         ],
-        CURLOPT_POSTFIELDS => json_encode(['email' => $email, 'password' => $password]),
+        CURLOPT_POSTFIELDS => json_encode([
+            'email' => $email,
+            'password' => $password
+        ])
     ]);
 
     $response = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
     curl_close($ch);
 
-    if ($response === false) {
-        $message = 'Unable to connect to Supabase: ' . $curlError;
+    $data = json_decode($response, true);
+
+   if ($httpCode >= 200 && $httpCode < 300) {
+
+    $_SESSION['access_token'] = $data['access_token'];
+    $_SESSION['user'] = $data['user'];
+
+    header("Location: ../main/dashboard.php");
+    exit;
+
     } else {
-        $data = json_decode($response, true) ?: [];
-        if ($httpCode >= 200 && $httpCode < 300 && !empty($data['access_token'])) {
-            session_regenerate_id(true);
-            $_SESSION['access_token'] = $data['access_token'];
-            $_SESSION['refresh_token'] = $data['refresh_token'] ?? '';
-            $_SESSION['user'] = $data['user'] ?? [];
-            header('Location: ../main/dashboard.php');
-            exit;
-        }
-        $message = 'Login failed: ' . ($data['error_description'] ?? $data['msg'] ?? 'Invalid email or password.');
+
+        $message = "Login failed: " .
+            ($data['error_description'] ?? 'Invalid email or password.');
+
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - LifeCycle Track</title>
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="../dist/output.css">
 </head>
 
-<<<<<<< HEAD
-<body class="bg-gray-100 min-h-screen flex items-center justify-center bg-cover bg-no-repeat">
-    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-        <h2 class="text-2xl font-bold text-center mb-6">Login</h2>
-        <?php if ($message): ?><p class="text-red-500 text-sm mb-4"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></p><?php endif; ?>
-        <form method="POST">
-            <label class="block mb-1 text-sm font-medium">Email</label>
-            <input type="email" name="email" required class="w-full border border-gray-300 rounded px-3 py-2 mb-4">
-            <label class="block mb-1 text-sm font-medium">Password</label>
-            <input type="password" name="password" required class="w-full border border-gray-300 rounded px-3 py-2 mb-5">
-            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
-            <div class="text-center my-4 text-gray-400">OR</div>
-            <a href="google.php" class="w-full flex items-center justify-center gap-2 border border-gray-300 py-2 rounded hover:bg-gray-100">Sign in with Google</a>
-        </form>
-        <p class="text-center text-sm text-gray-500 mt-5">
-            Don't have an account?
-            <a href="register.php"
-                class="text-blue-600 hover:underline font-medium">
-                Create Account
-            </a>
-        </p>
-    </div>
-</body>
-=======
 <body class="min-h-screen flex items-center justify-center p-6 bg-cover bg-center bg-no-repeat"
       style="background-image: url('../img/image.png');">
 
@@ -153,9 +133,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $message === '') {
                 class="w-full h-11 flex items-center justify-center gap-2 border border-slate-200 rounded-xl bg-white
                         text-sm text-gray-900 hover:bg-slate-50 transition">
                     <i class="fab fa-google"></i>Sign in with Google </a>
->>>>>>> aa7369e06954f28d1d5b67ad5ad4def0aa614def
 
             </form>
+
+                <!-- ADDED: Create Account link (from the first login page) -->
+                <p class="text-center text-sm text-slate-500 mt-5">
+                    Don't have an account?
+                    <a href="register.php"
+                       class="font-bold text-[#155B92] hover:underline">
+                        Create Account
+                    </a>
+                </p>
+
                 <div class="text-center text-[11px] leading-relaxed text-slate-500 mt-6">
                     Barangay GULOD Management System<br>
                     <strong class="text-gray-900 font-bold">Better Services for a Stronger Barangay</strong>
@@ -174,4 +163,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $message === '') {
                 });
             </script>
         </body>
-</html> 
+</html>
