@@ -1,107 +1,7 @@
 <?php
-
-declare(strict_types=1);
-
-session_start();
-
-if (empty($_SESSION['access_token'])) {
-    header('Location: ../auth/login.php');
-    exit;
-}
-
-require_once __DIR__ . '/../config/database.php';
-
-function e($value): string
-{
-    return htmlspecialchars(
-        (string)($value ?? ''),
-        ENT_QUOTES,
-        'UTF-8'
-    );
-}
-
-$search = trim((string)($_GET['search'] ?? ''));
-$condition = strtolower(trim((string)($_GET['condition'] ?? 'all')));
-
-$allowedConditions = ['all', 'good', 'fair', 'poor'];
-
-if (!in_array($condition, $allowedConditions, true)) {
-    $condition = 'all';
-}
-
-$page = max(1, (int)($_GET['page'] ?? 1));
-$perPage = 7;
-$offset = ($page - 1) * $perPage;
-
-$facilities = [];
-$totalFacilities = 0;
-$totalPages = 1;
-$error = '';
-$success = trim((string)($_GET['success'] ?? ''));
-
-try {
-    $where = ["asset_type = 'facility'"];
-    $params = [];
-
-    if ($search !== '') {
-        $where[] = "(name ILIKE :search OR CAST(id AS TEXT) ILIKE :search)";
-        $params['search'] = '%' . $search . '%';
-    }
-
-    if ($condition !== 'all') {
-        $where[] = 'LOWER(condition) = :condition';
-        $params['condition'] = $condition;
-    }
-
-    $whereSql = implode(' AND ', $where);
-
-    // Total matching records.
-    $countStmt = $pdo->prepare(
-        "SELECT COUNT(*) FROM assets WHERE $whereSql"
-    );
-
-    $countStmt->execute($params);
-    $totalFacilities = (int)$countStmt->fetchColumn();
-
-    $totalPages = max(
-        1,
-        (int)ceil($totalFacilities / $perPage)
-    );
-
-    // If the requested page no longer exists, show the last page.
-    if ($page > $totalPages) {
-        $page = $totalPages;
-        $offset = ($page - 1) * $perPage;
-    }
-
-    // Get current page.
-    $sql = "
-        SELECT id, name, location, condition
-        FROM assets
-        WHERE $whereSql
-        ORDER BY id ASC
-        LIMIT :limit OFFSET :offset
-    ";
-
-    $stmt = $pdo->prepare($sql);
-
-    foreach ($params as $key => $value) {
-        $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
-    }
-
-    $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-
-    $stmt->execute();
-    $facilities = $stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $exception) {
-    error_log('Facilities list error: ' . $exception->getMessage());
-    $error = 'Unable to load facilities. Please check your database connection and table columns.';
-}
-
-$modal = __DIR__ . '/addfacilitymodal.php';
+require_once __DIR__ . '/_app.php';
+require_login();
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -116,6 +16,43 @@ $modal = __DIR__ . '/addfacilitymodal.php';
 </head>
 
 <body>
+
+    <?php
+    $message = '';
+    $error = '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        try {
+            verify_csrf();
+            $action = $_POST['action'] ?? '';
+            if ($action === 'add') {
+                $name = trim((string)($_POST['name'] ?? ''));
+                $location = trim((string)($_POST['location'] ?? ''));
+                $condition = (string)($_POST['condition'] ?? '');
+                if ($name === '' || $location === '' || !in_array($condition, ['Good', 'Fair', 'Poor'], true)) {
+                    throw new RuntimeException('Name, location and condition are required.');
+                }
+                save_asset($pdo, 'equipment', [
+                    'name' => $name,
+                    'brand' => $_POST['brand'] ?? '',
+                    'model' => $_POST['model'] ?? '',
+                    'category' => $_POST['category'] ?? ('equipment'),
+                    'location' => $location,
+                    'date_acquired' => $_POST['date_acquired'] ?? '',
+                    'condition' => $condition,
+                    'details_name' => $_POST['details_name'] ?? '',
+                    'remarks' => $_POST['remarks'] ?? '',
+                ]);
+                $message = 'Equipment Name added successfully.';
+            }
+        } catch (Throwable $ex) {
+            $error = $ex->getMessage();
+        }
+    }
+    $search = trim((string)($_GET['search'] ?? ''));
+    $filterCondition = (string)($_GET['condition'] ?? '');
+    $assets = fetch_assets($pdo, 'equipment', $search, $filterCondition);
+    ?>
+
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
@@ -126,140 +63,186 @@ $modal = __DIR__ . '/addfacilitymodal.php';
             View and manage all registered facilities and their current status
         </p>
 
-        <?php if ($success !== ''): ?>
-            <div class="mb-4 rounded-md bg-green-100 text-green-800 p-3">
-                <?= e($success) ?>
-            </div>
-        <?php endif; ?>
 
-        <?php if ($error !== ''): ?>
-            <div class="mb-4 rounded-md bg-red-100 text-red-800 p-3">
-                <?= e($error) ?>
-            </div>
-        <?php endif; ?>
-        <form method="GET"
-            class="flex flex-wrap items-end gap-4 mb-5">
+        <div class="flex items-end gap-4 mb-5">
 
-            <div class="w-full max-w-sm">
-                <label for="search" class="block text-xs font-medium text-gray-700 mb-1">
-                    Search
-                </label>
+        <!--eto yung search bar-->
+        <div class="w-full max-w-sm min-w-50">
+            <div class="relative flex items-center">
+                <i class="fa-solid fa-magnifying-glass absolute w-5 h-5 top-2.5 left-2.5 text-slate-600"></i>
 
-                <div class="relative flex items-center">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 text-slate-600"></i>
-
-                    <input
-                        id="search"
-                        type="search"
-                        name="search"
-                        value="<?= e($search) ?>"
-                        placeholder="Search by name or ID..."
-                        class="w-full bg-white text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 focus:outline-none focus:border-[#155B92]">
-                </div>
+                <input
+                    id="facilitySearch"
+                    class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
+                    placeholder="Search by name or id..."/>
             </div>
 
-            <div>
-                <label for="condition" class="block text-xs font-medium text-gray-700 mb-1">
-                    Condition
-                </label>
-
-                <select
-                    id="condition"
-                    name="condition"
-                    class="w-32 h-10 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92]">
-                    <option value="all" <?= $condition === 'all' ? 'selected' : '' ?>>All</option>
-                    <option value="good" <?= $condition === 'good' ? 'selected' : '' ?>>Good</option>
-                    <option value="fair" <?= $condition === 'fair' ? 'selected' : '' ?>>Fair</option>
-                    <option value="poor" <?= $condition === 'poor' ? 'selected' : '' ?>>Poor</option>
-                </select>
-            </div>
-
-            <button type="submit"
-                class="h-10 px-4 rounded-md bg-[#155B92] text-white hover:bg-[#124b79]">
-                <i class="fa-solid fa-filter mr-1"></i>
-                Apply
-            </button>
-
-            <a href="facilities_list.php"
-                class="h-10 px-4 inline-flex items-center rounded-md border border-gray-300 bg-white hover:bg-gray-50">
-                Reset
-            </a>
-
-            <button
-                type="button"
-                id="openFacilityModal"
-                class="h-10 px-4 rounded-[10px] bg-[#15588F] text-white hover:bg-[#124b79]">
-                <i class="fa-solid fa-circle-plus mr-2"></i>
-                Add Facility
-            </button>
-
-        </form>
-
-        <div class="facility-table-container">
-
-            <table class="facility-table">
-                <thead>
-                    <tr>
-                        <th><i class="fa-solid fa-id-card"></i> ID</th>
-                        <th><i class="fa-solid fa-tag"></i> Name</th>
-                        <th><i class="fa-solid fa-location-dot"></i> Location</th>
-                        <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
-                        <th><i class="fa-solid fa-gear"></i> Actions</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    <?php if (!$facilities): ?>
-                        <tr>
-                            <td colspan="5" class="p-8 text-center text-gray-500">
-                                No facilities found.
-                            </td>
-                        </tr>
-                    <?php else: ?>
-
-                        <?php foreach ($facilities as $facility): ?>
-
-                            <?php
-                            $status = strtolower((string)($facility['condition'] ?? ''));
-                            $statusClass = in_array(
-                                $status,
-                                ['good', 'fair', 'poor'],
-                                true
-                            ) ? $status : 'unknown';
-                            ?>
-
-                            <tr>
-                                <td><?= e($facility['id']) ?></td>
-
-                                <td><?= e($facility['name']) ?></td>
-
-                                <td><?= e($facility['location'] ?? '—') ?></td>
-
-                                <td>
-                                    <span class="condition <?= e($statusClass) ?>">
-                                        <span></span>
-                                        <?= e(ucfirst($status ?: 'Unknown')) ?>
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <a
-                                        class="view-button"
-                                        href="viewfacility.php?id=<?= urlencode((string)$facility['id']) ?>">
-                                        <i class="fa-solid fa-eye"></i>
-                                        View
-                                    </a>
-                                </td>
-                            </tr>
-
-                        <?php endforeach; ?>
-
-                    <?php endif; ?>
-
-                </tbody>
-            </table>
         </div>
+
+        <div class="equipment-table-container">
+
+            <select id="conditionFilter" class="w-28 h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer mr-120">
+                <!--base nalang ditor-->
+                <option value="all">All</option>
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
+                <option value="poor">Poor</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col ">
+            <button id="openFacilityModal" class="border-[#15588F] p-2 rounded-[10px] bg-[#15588F] pr-3 text-white cursor-pointer">
+                <i class="fa-solid fa-circle-plus mr-3 ml-2 text-white"></i> Add Facility
+            </button>
+        </div>
+        
+    </div>
+
+      <div class="facility-table-container">
+
+        <table class="facility-table">
+            <thead>
+                <tr>
+                    <th><i class="fa-solid fa-id-card"></i> ID</th>
+                    <th><i class="fa-solid fa-tag"></i> Name</th>
+                    <th><i class="fa-solid fa-location-dot"></i> Location</th>
+                    <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
+                    <th><i class="fa-solid fa-gear"></i> Actions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <!-- sample data lang naman to -->
+                 <tr>
+                    <td>0001</td>
+                    <td>Reception Hall</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+
+                    <td>
+                        <a href="viewfacility.php">
+                            <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button></a>  
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0002</td>
+                    <td>DayCare</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+    
+                <tr>
+                    <td>0003</td>
+                    <td>Parking</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition fair">
+                            <span></span>
+                            Fair
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0004</td>
+                    <td>Health Office</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0005</td>
+                    <td>Comfort Room</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition poor">
+                            <span></span>
+                            Poor
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0006</td>
+                    <td>Captain’s Office</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td>0007</td>
+                    <td>Lobby</td>
+                    <td>Captain’s Office</td>
+                    <td>
+                        <span class="condition good">
+                            <span></span>
+                            Good
+                        </span>
+                    </td>
+                    <td>
+                        <button class="view-button">
+                            <i class="fa-solid fa-eye"></i>
+                            View
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
         <!-- edit nalang tong pagination -->
         <div class="pagination">
@@ -280,14 +263,104 @@ $modal = __DIR__ . '/addfacilitymodal.php';
         </div>
 
         <?php
-        $modal = __DIR__ . '/addfacilitymodal.php';
+            $modal = __DIR__ . '/addfacilitymodal.php';
 
-        if (file_exists($modal)) {
-            include $modal;
-        } else {
-            echo "File NOT found: " . $modal;
-        } ?>
+            if (file_exists($modal)) {
+                include $modal;
+            } else {
+                echo "File NOT found: " . $modal;
+        }?>
     </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ROWS_PER_PAGE = 10; 
+
+        const searchInput  = document.getElementById('facilitySearch');
+        const filterSelect = document.getElementById('conditionFilter');
+        const tbody        = document.querySelector('.facility-table tbody');
+        const pagination   = document.querySelector('.pagination');
+        const [prevBtn, nextBtn] = pagination.querySelectorAll('.pagination-btn');
+
+        const allRows = Array.from(tbody.querySelectorAll('tr'));
+        let filteredRows = allRows.slice();
+        let currentPage = 1;
+
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = '<td colspan="5" style="text-align:center;padding:1rem;">No facilities found.</td>';
+        emptyRow.style.display = 'none';
+        tbody.appendChild(emptyRow);
+
+        function applyFilters() {
+            const query     = searchInput.value.trim().toLowerCase();
+            const condition = filterSelect.value;
+
+            filteredRows = allRows.filter(function (row) {
+                const id   = row.cells[0].textContent.trim().toLowerCase();
+                const name = row.cells[1].textContent.trim().toLowerCase();
+                const cond = row.querySelector('.condition');
+
+                const matchesSearch = id.includes(query) || name.includes(query);
+                const matchesCond   = condition === 'all' || (cond && cond.classList.contains(condition));
+
+                return matchesSearch && matchesCond;
+            });
+
+            currentPage = 1;
+            render();
+        }
+
+        function render() {
+            const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const start = (currentPage - 1) * ROWS_PER_PAGE;
+            const end   = start + ROWS_PER_PAGE;
+
+            allRows.forEach(function (row) { row.style.display = 'none'; });
+            filteredRows.slice(start, end).forEach(function (row) { row.style.display = ''; });
+            emptyRow.style.display = filteredRows.length === 0 ? '' : 'none';
+
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            pagination.querySelectorAll('.pagination-number').forEach(function (b) { b.remove(); });
+
+            for (let i = 1; i <= totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'pagination-number' + (i === currentPage ? ' active' : '');
+                btn.textContent = i;
+                btn.addEventListener('click', function () {
+                    currentPage = i;
+                    render();
+                });
+                pagination.insertBefore(btn, nextBtn);
+            }
+
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages;
+            prevBtn.style.opacity = prevBtn.disabled ? '0.5' : '';
+            nextBtn.style.opacity = nextBtn.disabled ? '0.5' : '';
+            prevBtn.style.cursor  = prevBtn.disabled ? 'not-allowed' : '';
+            nextBtn.style.cursor  = nextBtn.disabled ? 'not-allowed' : '';
+        }
+
+        prevBtn.addEventListener('click', function () {
+            if (currentPage > 1) { currentPage--; render(); }
+        });
+
+        nextBtn.addEventListener('click', function () {
+            const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
+            if (currentPage < totalPages) { currentPage++; render(); }
+        });
+
+        searchInput.addEventListener('input', applyFilters);
+        filterSelect.addEventListener('change', applyFilters);
+
+        render(); 
+    });
+    </script>
 </body>
 
 </html>

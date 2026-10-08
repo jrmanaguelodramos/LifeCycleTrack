@@ -56,7 +56,7 @@
                             <!--sample data lang -->
                             <tr data-notes="">
                                 <td>0001</td>
-                                <td>Main Building</td>
+                                <td>Reception Hall</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>

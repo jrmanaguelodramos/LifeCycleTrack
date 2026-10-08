@@ -12,6 +12,7 @@ if (!isset($_SESSION['access_token'])) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Lifecycle Report | LifeCycleTrack</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -22,7 +23,6 @@ if (!isset($_SESSION['access_token'])) {
 
     body {
         margin: 0;
-        background: #f3f6fb;
         color: #172b4d;
         font-family: Inter, system-ui, Arial, sans-serif;
     }

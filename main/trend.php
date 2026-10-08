@@ -11,6 +11,7 @@ if (!isset($_SESSION['access_token'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <title>Trend Analysis | LifeCycleTrack</title>
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
@@ -22,7 +23,6 @@ if (!isset($_SESSION['access_token'])) {
 
         body {
             margin: 0;
-            background: #f3f6fb;
             color: #172b4d;
             font-family: Inter, system-ui, Arial, sans-serif
         }
@@ -335,7 +335,11 @@ if (!isset($_SESSION['access_token'])) {
 </head>
 
 <body>
-    <?php include_once __DIR__ . '/sidebar.php'; ?><main class="report-main">
+    <?php
+        include('sidebar.php');
+    ?>
+    
+    <main class="report-main">
         <div class="header">
             <div>
                 <p class="eyebrow">Reports / Analytics</p>

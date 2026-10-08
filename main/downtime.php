@@ -15,6 +15,7 @@ if (!isset($_SESSION['access_token'])) {
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <style>
     * {
         box-sizing: border-box;
@@ -22,7 +23,6 @@ if (!isset($_SESSION['access_token'])) {
 
     body {
         margin: 0;
-        background: #f3f6fb;
         color: #172b4d;
         font-family: Inter, system-ui, Arial, sans-serif;
     }
