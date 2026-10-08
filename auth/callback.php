@@ -55,7 +55,6 @@ if (!hash) {
 
     } else {
 
-        // Get user information from Supabase
         fetch("https://ukgusfmwmynuwdsiuzir.supabase.co/auth/v1/user", {
             method: "GET",
             headers: {
