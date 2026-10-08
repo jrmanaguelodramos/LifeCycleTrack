@@ -3,6 +3,11 @@
 ?>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
+<!-- NEW: fonts used by the redesigned sidebar (Bricolage Grotesque + Figtree) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
 
 <aside class="sidebar ">
 
@@ -19,7 +24,7 @@
         <li>
             <a href="dashboard.php"
                class="<?= $currentPage == 'dashboard.php' ? 'active' : '' ?>">
-                <i class="fa-solid fa-gauge"></i>
+                 <i class="ti ti-layout-dashboard" style="font-size: 22px !important;"></i>
                 <span>Dashboard</span>
 
             </a>
@@ -34,7 +39,7 @@
         <li>
             <a href="facilities_list.php"
                class="<?= in_array($currentPage, $facilityPages) ? 'active' : '' ?>">
-                <i class="fa-solid fa-building-circle-exclamation"></i>
+               <i class="ti ti-buildings" style="font-size: 22px !important;"></i>
                 <span>Facilities</span>
             </a>
         </li>
@@ -48,7 +53,7 @@
         <li>
             <a href="equipments_list.php"
                class="<?= in_array($currentPage, $equipmentPages) ? 'active' : '' ?>">
-                <i class="fa-solid fa-screwdriver-wrench"></i>
+               <i class="ti ti-tool" style="font-size: 22px !important;"></i>
                 <span>Equipment</span>
 
             </a>
@@ -65,7 +70,7 @@
         <li>
             <button id="condition-toggle" class="menu-button">
                 <span>
-                    <i class="fa-solid fa-clipboard-check"></i>
+                     <i class="ti ti-clipboard-check" style="font-size: 22px !important;"></i>
                     Condition
                 </span>
                 <i id="condition-arrow"
@@ -108,7 +113,7 @@
         <li>
             <button id="reports-toggle" class="menu-button">
                 <span>
-                    <i class="fa-solid fa-chart-simple"></i>
+                   <i class="ti ti-chart-bar" style="font-size: 22px !important;"></i>
                     Reports
                 </span>
                 <i id="reports-arrow"
@@ -155,18 +160,16 @@
     </ul>
 
     <!--profile-->
-    <div class="sidebar-profile-wrapper">
+   <div class="sidebar-profile-wrapper">
         <div id="profile-menu" class="profile-menu">
-
-            <button type="button"
+            <button type="button" onclick="openLogoutModal(event)"
                     id="logout-btn"
                     class="logout-btn">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Logout</span>
-
             </button>
-
         </div>
+        
 
         <button id="profile-toggle"
                 class="sidebar-profile">
@@ -184,44 +187,24 @@
             class="fa-solid fa-chevron-up profile-arrow">
             </i>
         </button>
-
     </div>
-
-    <div id="logout-modal"
-        class="hidden fixed inset-0 z-[99999] items-center justify-center bg-black/40 backdrop-blur-sm">
-
-        <div class="w-[380px] rounded-2xl bg-white p-7 text-center shadow-2xl">
-
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-[#155B92]">
-                <i class="fa-solid fa-right-from-bracket text-2xl"></i>
-            </div>
-
-            <h3 class="mb-2 text-xl font-semibold text-gray-800">
-                Confirm Logout
-            </h3>
-
-            <p class="mb-6 text-sm text-gray-500">
-                Are you sure you want to log out?
-            </p>
-
-            <div class="flex justify-center gap-3">
-
-                <button type="button"
-                        id="cancel-logout"
-                        class="w-28 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100">
-                    Cancel
-                </button>
-
-                <a href="../auth/login.php"
-                class="w-28 rounded-lg bg-[#155B92] px-4 py-2.5 text-center text-sm font-medium text-white transition hover:bg-[#104a78]">
-                    Logout
-                </a>
-            </div>
-        </div>
-    </div>
-
 </aside>
 
+   <div id="logoutModal" class="modal-overlay">
+            <div class="modal-box">
+                <div class="modal-icon">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </div>
+
+                <h2>Confirm Logout</h2>
+                <p style="color:black;">Are you sure you want to log out?</p>
+
+                <div class="actions">
+                    <button onclick="closeLogoutModal()">Cancel</button>
+                    <button onclick="confirmLogout()">Logout</button>
+                </div>
+            </div>
+    </div>
 
     <script>
         //condition 
@@ -271,29 +254,28 @@
 
         });
 
-        //logout modal
-        const logoutBtn = document.getElementById('logout-btn');
-        const logoutModal = document.getElementById('logout-modal');
-        const cancelLogout = document.getElementById('cancel-logout');
-
-        logoutBtn.addEventListener('click', function () {
-            profileMenu.classList.remove('show');
-            profileArrow.classList.remove('rotate');
-
-            logoutModal.classList.remove('hidden');
-            logoutModal.classList.add('flex');
-        });
-
-        cancelLogout.addEventListener('click', function () {
-            logoutModal.classList.remove('flex');
-            logoutModal.classList.add('hidden');
-        });
-
-        logoutModal.addEventListener('click', function (event) {
-            if (event.target === logoutModal) {
-                logoutModal.classList.remove('flex');
-                logoutModal.classList.add('hidden');
+         function openLogoutModal(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
             }
-        });
 
+            const modal = document.getElementById('logoutModal');
+
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeLogoutModal() {
+            const modal = document.getElementById('logoutModal');
+
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function confirmLogout() {
+            window.location.href = '../auth/logout.php';
+        }
     </script>
