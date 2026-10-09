@@ -138,14 +138,23 @@ if (
 
                                 <!--brand -->
                                 <div>
-                                    <label class="block text-sm font-semibold text-[#155B92] mb-1">Brand</label>
-                                    <input type="text" name="brand" placeholder="Enter Brand (Optional)" class="w-full h-9 px-3 border border-[#AFC4D6] rounded-md text-sm outline-none focus:border-[#155B92]">
+                                    <label class="block text-sm font-semibold text-[#155B92] mb-1">Facility Type<span class="text-red-500">*</span></label>
+                                    <select name="category" class="w-full h-9 px-3 border border-[#AFC4D6] rounded-md text-sm text-[#7A9BB5] outline-none focus:border-[#155B92]">
+                                        <option value="">Select Category</option>
+                                        <option value="Facility">Administrative</option>
+                                        <option value="Equipment">Security </option>
+                                        <option value="Equipment">Storage</option>
+                                    </select>s
                                 </div>
 
                                 <!--model -->
-                                <div>
-                                    <label class="block text-sm font-semibold text-[#155B92] mb-1">Model</label>
-                                    <input type="text" name="model" placeholder="Enter Model (Optional)" class="w-full h-9 px-3 border border-[#AFC4D6] rounded-md text-sm outline-none focus:border-[#155B92]">
+                                  <div>
+                                    <label class="block text-sm font-semibold text-[#155B92] mb-1">Service<span class="text-red-500">*</span></label>
+                                    <select name="category" class="w-full h-9 px-3 border border-[#AFC4D6] rounded-md text-sm text-[#7A9BB5] outline-none focus:border-[#155B92]">
+                                        <option value="">Select Category</option>
+                                        <option value="Facility">Serviceable</option>
+                                        <option value="Equipment">Unserviceable </option>
+                                    </select>
                                 </div>
 
                                 <!--category -->

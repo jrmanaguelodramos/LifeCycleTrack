@@ -69,7 +69,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>equipment Condition Assessment</title>
+    <title>Equipment Condition Assessment</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
@@ -127,7 +127,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=1"" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
                             <tr data-notes="">
@@ -136,7 +136,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=1"" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
                             <tr data-notes="">
@@ -404,7 +404,6 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             const selectedRadio = form.querySelector('input[name="condition"]:checked');
             if (!selectedRadio) {
-                status.textContent = "Pumili muna ng condition.";
                 return;
             }
 

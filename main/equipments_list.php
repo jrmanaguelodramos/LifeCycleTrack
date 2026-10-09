@@ -91,7 +91,7 @@ require_login();
         </div>
 
         <div class="flex flex-col ">
-            <button id="openFacilityModal" class="border-[#15588F] p-2 rounded-[10px] bg-[#15588F] pr-3 text-white cursor-pointer">
+            <button id="openEquipmentModal" class="border-[#15588F] p-2 rounded-[10px] bg-[#15588F] pr-3 text-white cursor-pointer">
                 <i class="fa-solid fa-circle-plus mr-3 ml-2 text-white"></i> Add Equipment
             </button>
         </div>
@@ -125,7 +125,7 @@ require_login();
                     </td>
 
                     <td>
-                        <a href="viewequip.php">
+                       <a href="viewequip.php?id=1">
                             <button class="view-button">
                             <i class="fa-solid fa-eye"></i>
                             View
