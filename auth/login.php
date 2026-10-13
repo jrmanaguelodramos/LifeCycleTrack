@@ -135,8 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <i class="fab fa-google"></i>Sign in with Google </a>
 
             </form>
-
-                <!-- ADDED: Create Account link (from the first login page) -->
                 <p class="text-center text-sm text-slate-500 mt-5">
                     Don't have an account?
                     <a href="register.php"

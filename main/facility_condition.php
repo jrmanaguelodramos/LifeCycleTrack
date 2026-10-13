@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Facility Condition Assessment</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/condition.css">
@@ -169,6 +170,23 @@
                                     <span>Poor</span>
                                 </label>
                             </div>
+                        </div>
+
+                         <div>
+                            <label for="equipStatus" class="block text-xl font-bold text-black mb-2">Status</label>
+                            <select id="equipStatus" name="status"
+                                class="w-full p-3 border border-gray-300 rounded-xl text-sm text-gray-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                                <option value="">Select status</option>
+                                <option>Serviceable (functioning)</option>
+                                <optgroup label="Unserviceable">
+                                    <option>Unserviceable: for maintenance</option>
+                                    <option>Unserviceable: for repair</option>
+                                    <option>Unserviceable: for inspection</option>
+                                </optgroup>
+                                <option>Beyond repair (irreparable)</option>
+                                <option>Subject for disposal or condemnation</option>
+                                <option>Disposed</option>
+                            </select>
                         </div>
 
                         <div>

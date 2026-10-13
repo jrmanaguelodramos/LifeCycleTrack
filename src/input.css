@@ -7,7 +7,14 @@
     --color-brand-primary: #1e40af;
     --color-brand-secondary: #0ea5e9;
     --color-custom-dark: #1e40af;
-    --font-display: "Poppins", "sans-serif";
+
+    --color-brand: #1B5FAA;
+    --color-brand-dark: #0F3F7A;
+    --color-brand-soft: #E6F0FB;
+    --color-brand-ink: #10253F;
+
+    --font-display: "Poppins", sans-serif;
+    --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
 

@@ -8,8 +8,9 @@ require_login();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Facilities List</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/facilities_list.css">
@@ -59,7 +60,7 @@ require_login();
         <h1 class="text-3xl font-bold ">
             Facilities List
         </h1>
-        <p class="mt-2 text-black-100 mb-8">
+        <p class="mt-2 text-black-100 mb-8 text-gray-600">
             View and manage all registered facilities and their current status
         </p>
 
@@ -91,9 +92,9 @@ require_login();
         </div>
 
         <div class="flex flex-col ">
-            <button id="openFacilityModal" class="border-[#15588F] p-2 rounded-[10px] bg-[#15588F] pr-3 text-white cursor-pointer">
+            <a href="addfacility.php"  class="border-[#15588F] p-2 rounded-[10px] bg-[#15588F] pr-3 text-white cursor-pointer">
                 <i class="fa-solid fa-circle-plus mr-3 ml-2 text-white"></i> Add Facility
-            </button>
+            </a>
         </div>
         
     </div>
@@ -261,15 +262,6 @@ require_login();
                 <i class="fa-solid fa-chevron-right"></i>
             </button>
         </div>
-
-        <?php
-            $modal = __DIR__ . '/addfacilitymodal.php';
-
-            if (file_exists($modal)) {
-                include $modal;
-            } else {
-                echo "File NOT found: " . $modal;
-        }?>
     </main>
 
     <script>

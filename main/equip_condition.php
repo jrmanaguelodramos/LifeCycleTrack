@@ -71,6 +71,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equipment Condition Assessment</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/condition.css">
@@ -121,67 +122,67 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </thead>
                         <tbody>
                             <!--sample data lang -->
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Serviceable (functioning)">
                                 <td>0001</td>
                                 <td>Printer</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=1"" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=1" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Serviceable (functioning)">
                                 <td>0002</td>
                                 <td>Airconditioner</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=1"" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=2" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Unserviceable: for maintenance">
                                 <td>0003</td>
                                 <td>Generator</td>
                                 <td><span class="condition fair"><span></span>Fair</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=3" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Serviceable (functioning)">
                                 <td>0004</td>
                                 <td>Water Dispenser</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=4" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Unserviceable: for repair">
                                 <td>0005</td>
                                 <td>Grass Cutter</td>
                                 <td><span class="condition poor"><span></span>Poor</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=5" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Serviceable (functioning)">
                                 <td>0006</td>
                                 <td>Computer</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=6" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
-                            <tr data-notes="">
+                            <tr data-notes="" data-status="Serviceable (functioning)">
                                 <td>0007</td>
                                 <td>Wheel Barrow</td>
                                 <td><span class="condition good"><span></span>Good</span></td>
                                 <td>
                                     <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
+                                    <a href="viewequip.php?id=7" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
                                 </td>
                             </tr>
                         </tbody>
@@ -237,6 +238,23 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </label>
                             </div>
                         </div>
+              
+                        <div>
+                            <label for="equipStatus" class="block text-xl font-bold text-black mb-2">Status</label>
+                            <select id="equipStatus" name="status"
+                                class="w-full p-3 border border-gray-300 rounded-xl text-sm text-gray-800 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+                                <option value="">Select status</option>
+                                <option>Serviceable (functioning)</option>
+                                <optgroup label="Unserviceable">
+                                    <option>Unserviceable: for maintenance</option>
+                                    <option>Unserviceable: for repair</option>
+                                    <option>Unserviceable: for inspection</option>
+                                </optgroup>
+                                <option>Beyond repair (irreparable)</option>
+                                <option>Subject for disposal or condemnation</option>
+                                <option>Disposed</option>
+                            </select>
+                        </div>
 
                         <div>
                             <label for="notes" class="block text-xl font-bold text-black mb-2">Notes / Remarks</label>
@@ -265,6 +283,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
         const equipmentName = document.getElementById("name");
         const panelCondition = document.getElementById("panelCondition");
         const notes = document.getElementById("notes");
+        const statusSelect = document.getElementById("equipStatus");
         const noResults = document.getElementById("noResults");
         const status = document.getElementById("status");
         const prevButton = document.getElementById("prevPage");
@@ -290,6 +309,10 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
             cells[2].replaceChildren(badge);
         }
 
+        function updateStatus(row, value) {
+            row.dataset.status = value;
+        }
+
         function openequipment(row) {
             emptyState.hidden = true;
             form.hidden = false;
@@ -302,6 +325,7 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
             equipmentName.textContent = cells[1].textContent.trim();
             panelCondition.textContent = "Current condition: " + condition;
             notes.value = row.dataset.notes || "";
+            statusSelect.value = row.dataset.status || "";
 
             const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
             if (radio) radio.checked = true;
@@ -407,7 +431,14 @@ $assets = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 return;
             }
 
+            if (!statusSelect.value) {
+                statusSelect.focus();
+                status.textContent = "Pumili muna ng status.";
+                return;
+            }
+
             updateCondition(selectedRow, selectedRadio.value);
+            updateStatus(selectedRow, statusSelect.value);
             selectedRow.dataset.notes = notes.value;
             panelCondition.textContent = "Current condition: " + selectedRadio.value;
 

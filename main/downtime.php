@@ -11,7 +11,7 @@ if (!isset($_SESSION['access_token'])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Downtime Report | LifeCycleTrack</title>
+    <title>Downtime Report</title>
     <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
