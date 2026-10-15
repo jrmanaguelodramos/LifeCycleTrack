@@ -13,22 +13,24 @@ $error = '';
     <title>Add Equipment</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="../src/output.css">
+    <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
 </head>
 <body>
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
+
+            <nav aria-label="Breadcrumb" class="mb-2">
+                <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+                    <li><a href="equipments_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-solid fa-wrench mr-2"></i>Equipments List</a></li>
+                    <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                    <li aria-current="page" class="font-medium text-blue-900 cursor-pointer">Add Equipment</li>
+                </ol>
+            </nav>
+
         <h1 class="text-3xl font-bold">Add Equipment</h1>
         <p class="mt-2 mb-3 text-gray-600">Register new equipment</p>
-
-        <nav aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
-                <li><a href="equipments_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
-                <li><i class="fa-solid fa-chevron-right mx-2 text-xs"></i><a href="addequipment.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Add Equipment</a></li>
-            </ol>
-        </nav>
 
         <?php if ($error !== ''): ?>
             <div class="mb-5 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"><?= htmlspecialchars($error) ?></div>

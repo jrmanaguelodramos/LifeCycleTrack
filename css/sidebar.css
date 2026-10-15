@@ -445,7 +445,12 @@
         font-size: 14px;
     }
 
-    .logout-btn:hover {
-        background: rgba(231,76,60,0.15) !important;
+    #logout-btn:hover {
+        background: rgba(231, 76, 60, 0.15) !important;
         color: #e74c3c !important;
+    }
+
+    .profile-menu a.logout-btn:hover {
+        background: var(--hover) !important;
+        color: #fff !important;
     }

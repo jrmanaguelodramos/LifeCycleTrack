@@ -3,6 +3,11 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
 
+if (empty($_SESSION['access_token'])) {
+    header('Location: ../auth/login.php');
+    exit;
+}
+
 $facilityId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 1;
 
 $sampleFacilities = [
@@ -59,7 +64,7 @@ $facilityAge = $acquisitionYear
     <title>Facility Profile / Information</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="../src/output.css">
+    <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
 </head>
 
@@ -68,17 +73,18 @@ $facilityAge = $acquisitionYear
 
     
     <main class="ml-64 p-8">
-          <nav aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2 mb-3" style="color: #0E3A63; font-size:18px;">
-                <li><a href="facilities_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
-                <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewfacility.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
+         <nav aria-label="Breadcrumb" class="mb-2">
+            <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+                <li><a href="facilities_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-regular fa-building mr-2"></i>Facilities List</a></li>
+                <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                <li aria-current="page" class="font-medium text-blue-900 ">Information</li>
             </ol>
         </nav>
 
         <h1 class="text-3xl font-bold">
             Facility Profile / Information
         </h1>
-        <p class="mt-2 mb-3 text-gray-500"> View detailed information about this facility.</p>
+        <p class="mt-2  text-gray-500"> View detailed information about this facility.</p>
 
       
 
@@ -90,8 +96,7 @@ $facilityAge = $acquisitionYear
 
         <?php else: ?>
 
-            <div class="ml-5 min-w-0 p-5">
-
+            <div class="min-w-0 p-3">
                 <div class="mt-2 w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <div class="mb-5 flex flex-wrap items-start gap-4">
 

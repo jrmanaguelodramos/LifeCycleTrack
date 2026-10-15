@@ -10,26 +10,16 @@ if (empty($_SESSION['access_token'])) {
 
 require_once __DIR__ . '/../config/database.php';
 
-/**
- * Escape output safely.
- */
 function e($value): string
 {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
-/**
- * Return a count from the database.
- */
 function getCount(PDO $pdo, string $sql): int
 {
     return (int) $pdo->query($sql)->fetchColumn();
 }
 
-/**
- * Calculate a simple lifecycle score:
- * Good = 100, Fair = 60, Poor = 20.
- */
 function calculateScore(array $counts): int
 {
     $total = array_sum($counts);
@@ -48,7 +38,6 @@ function calculateScore(array $counts): int
 }
 
 $dashboardError = '';
-
 $totalFacilities = 0;
 $totalEquipments = 0;
 $conditionAlerts = 0;
@@ -75,8 +64,7 @@ try {
     // Count condition alerts.
     $conditionAlerts = getCount(
         $pdo,
-        "SELECT COUNT(*) FROM assets
-         WHERE LOWER(condition) = 'poor'"
+        "SELECT COUNT(*) FROM assets WHERE LOWER(condition) = 'poor'"
     );
 
     // Facility condition distribution.
@@ -133,8 +121,7 @@ try {
             a.name AS asset_name,
             a.asset_type
          FROM activity_log AS al
-         LEFT JOIN assets AS a
-            ON a.id = al.asset_id
+         LEFT JOIN assets AS a ON a.id = al.asset_id
          ORDER BY al.created_at DESC
          LIMIT 7"
     );
@@ -254,12 +241,12 @@ function lifecycleChart(int $score, array $counts): void
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../src/output.css">
 </head>
-            
+
 <!--bg-[#F4F7FB]-->
 <body>
 
@@ -279,9 +266,9 @@ function lifecycleChart(int $score, array $counts): void
             </div>
         <?php endif; ?>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-5">
+        <div class="grid grid-cols-3 gap-4 mb-5 w-full">
 
-            <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5"
+            <div class="min-w-0 bg-white rounded-2xl shadow-md border border-gray-200 p-5 h-full"
                  style="border-left:4px solid rgb(14,58,99);">
 
                 <div class="flex items-start justify-between gap-3">
@@ -289,17 +276,17 @@ function lifecycleChart(int $score, array $counts): void
 
                     <a href="facilities_list.php"
                        aria-label="View facilities"
-                       class="w-9 h-9 rounded-full bg-[#155B92] flex items-center justify-center">
+                       class="w-9 h-9 shrink-0 rounded-full bg-[#155B92] flex items-center justify-center">
                         <i class="fa-solid fa-arrow-up-right-from-square text-white text-sm"></i>
                     </a>
                 </div>
 
-                <p class="text-5xl xl:text-7xl font-bold text-black mt-3">
+                <p class="text-5xl xl:text-6xl font-bold text-black mt-3">
                     <?= $totalFacilities ?>
                 </p>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5"
+            <div class="min-w-0 bg-white rounded-2xl shadow-md border border-gray-200 p-5 h-full"
                  style="border-left:4px solid rgb(14,58,99);">
 
                 <div class="flex items-start justify-between gap-3">
@@ -307,17 +294,17 @@ function lifecycleChart(int $score, array $counts): void
 
                     <a href="equipments_list.php"
                        aria-label="View equipment"
-                       class="w-9 h-9 rounded-full bg-[#155B92] flex items-center justify-center">
+                       class="w-9 h-9 shrink-0 rounded-full bg-[#155B92] flex items-center justify-center">
                         <i class="fa-solid fa-arrow-up-right-from-square text-white text-sm"></i>
                     </a>
                 </div>
 
-                <p class="text-5xl xl:text-7xl font-bold text-black mt-3">
+                <p class="text-5xl xl:text-6xl font-bold text-black mt-3">
                     <?= $totalEquipments ?>
                 </p>
             </div>
 
-            <div class="bg-[#FFD2D2] rounded-2xl shadow-md border border-red-200 p-5 md:col-span-2"
+            <div class="min-w-0 bg-[#FFD2D2] rounded-2xl shadow-md border border-red-200 p-5 h-full"
                  style="border-left:4px solid rgb(239,68,68);">
 
                 <div class="flex items-start justify-between gap-3">
@@ -325,12 +312,12 @@ function lifecycleChart(int $score, array $counts): void
 
                     <a href="facility_condition.php"
                        aria-label="View condition assessments"
-                       class="w-9 h-9 rounded-full bg-[#155B92] flex items-center justify-center">
+                       class="w-9 h-9 shrink-0 rounded-full bg-[#155B92] flex items-center justify-center">
                         <i class="fa-solid fa-arrow-up-right-from-square text-white text-sm"></i>
                     </a>
                 </div>
 
-                <p class="text-5xl xl:text-7xl font-bold text-red-600 text-center mt-1">
+                <p class="text-5xl xl:text-6xl font-bold text-red-600 mt-3">
                     <?= $conditionAlerts ?>
                 </p>
             </div>
@@ -413,7 +400,9 @@ function lifecycleChart(int $score, array $counts): void
                                 </td>
                             </tr>
                         <?php endforeach; ?>
+
                     <?php endif; ?>
+
                 </tbody>
             </table>
         </div>
