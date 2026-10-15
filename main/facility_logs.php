@@ -2,23 +2,30 @@
 require_once __DIR__ . '/_app.php';
 require_login();
 
+session_start();
+
+if (!isset($_SESSION['access_token'])) {
+    header("Location: ../auth/login.php");
+    exit;
+}
+
 $facilityId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 1;
 
 $facility = [
     'id' => $facilityId, 'name' => 'Reception Hall', 'condition' => 'Good',
-    'status' => 'Serviceable',
+    'status' => 'Serviceable (functioning)',
     'description' => 'Main academic building used for classrooms and administrative offices.',
 ];
 
 $logs = [
-    ['date' => '2026-05-15', 'condition' => 'Good', 'status' => 'Serviceable', 'remarks' => 'Routine inspection completed. Building is in good condition.'],
-    ['date' => '2026-02-20', 'condition' => 'Good', 'status' => 'Serviceable', 'remarks' => 'Minor lighting issues addressed. Classrooms remain usable.'],
-    ['date' => '2025-11-12', 'condition' => 'Fair', 'status' => 'For maintenance', 'remarks' => 'Minor ceiling leaks observed in selected areas.'],
-    ['date' => '2025-08-08', 'condition' => 'Fair', 'status' => 'For maintenance', 'remarks' => 'Several wall sections require repainting and minor repairs.'],
-    ['date' => '2025-05-14', 'condition' => 'Good', 'status' => 'Serviceable', 'remarks' => 'Routine inspection. Electrical fixtures are functioning properly.'],
-    ['date' => '2025-02-03', 'condition' => 'Good', 'status' => 'Serviceable', 'remarks' => 'Minor maintenance completed in hallways and classrooms.'],
-    ['date' => '2024-11-10', 'condition' => 'Poor', 'status' => 'For repair', 'remarks' => 'Roof leakage and damaged ceiling sections require repair.'],
-    ['date' => '2024-08-05', 'condition' => 'Good', 'status' => 'Serviceable', 'remarks' => 'Initial inspection completed. Facility was suitable for use.'],
+    ['date' => '2026-05-15', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Routine inspection completed. Building is in good conditioaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaan.'],
+    ['date' => '2026-02-20', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Minor lighting issues addressed. Classrooms remain usable conditioaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaan.'],
+    ['date' => '2025-11-12', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance', 'remarks' => 'Minor ceiling leaks observed in selected areas.'],
+    ['date' => '2025-08-08', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance', 'remarks' => 'Several wall sections require repainting and minor repairs.'],
+    ['date' => '2025-05-14', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Routine inspection. Electrical fixtures are functioning properly.'],
+    ['date' => '2025-02-03', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Minor maintenance completed in hallways and classrooms.'],
+    ['date' => '2024-11-10', 'condition' => 'Poor', 'status' => 'Unserviceable: for repair', 'remarks' => 'Roof leakage and damaged ceiling sections require repair.'],
+    ['date' => '2024-08-05', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Initial inspection completed. Facility was suitable for use.'],
 ];
 
 if (!function_exists('ev')) {
@@ -49,6 +56,18 @@ $counts = ['Good' => 0, 'Fair' => 0, 'Poor' => 0];
 foreach ($logs as $log) {
     if (isset($counts[$log['condition']])) $counts[$log['condition']]++;
 }
+
+$statusOptions = [
+    'Serviceable (functioning)',
+    ['group' => 'Unserviceable', 'options' => [
+        'Unserviceable: for maintenance',
+        'Unserviceable: for repair',
+        'Unserviceable: for inspection',
+    ]],
+    'Beyond repair (irreparable)',
+    'Subject for disposal or condemnation',
+    'Disposed',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -58,7 +77,7 @@ foreach ($logs as $log) {
     <title>Facility Condition History</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="../src/output.css">
+    <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/condition_logs.css">
 </head>
@@ -66,17 +85,19 @@ foreach ($logs as $log) {
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
+            <nav aria-label="Breadcrumb" class="mb-2">
+                <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+                    <li><a href="facilities_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-regular fa-building mr-2"></i>Facilities List</a></li>
+                    <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                    <li><a href="viewfacility.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> Information</a></li>
+                    <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                    <li aria-current="page" class="font-medium text-blue-900 ">Condition Logs</li>
+                </ol>
+            </nav>
+
         <div class="cl-page">
             <h1 class="text-3xl font-bold">Facility Condition History</h1>
             <p class="mt-2 mb-3 text-gray-600">View the condition records and inspection history of this facility.</p>
-
-            <nav aria-label="Breadcrumb">
-                <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
-                    <li><a href="facilities_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
-                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewfacility.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
-                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="facility_logs.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Condition History</a></li>
-                </ol>
-            </nav>
 
             <div class="cl-wrap">
                 <div class="cl-head">
@@ -116,13 +137,48 @@ foreach ($logs as $log) {
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <input id="logSearch" type="text" placeholder="Search remarks or status">
                         </div>
-                        <select id="logFilter">
-                            <option value="">All conditions</option>
-                            <option value="Good">Good</option>
-                            <option value="Fair">Fair</option>
-                            <option value="Poor">Poor</option>
-                        </select>
+
+                        <div class="cl-field">
+                            <label for="startDate">Start date</label>
+                            <input id="startDate" type="date">
+                        </div>
+                        <div class="cl-field">
+                            <label for="endDate">End date</label>
+                            <input id="endDate" type="date">
+                        </div>
+
+                        <div class="cl-field">
+                            <label for="logFilter">Condition</label>
+                            <select id="logFilter">
+                                <option value="">All conditions</option>
+                                <option value="Good">Good</option>
+                                <option value="Fair">Fair</option>
+                                <option value="Poor">Poor</option>
+                            </select>
+                        </div>
+
+                        <div class="cl-field">
+                            <label for="statusFilter">Status</label>
+                            <select id="statusFilter">
+                                <option value="">All statuses</option>
+                                <?php foreach ($statusOptions as $opt): ?>
+                                    <?php if (is_array($opt)): ?>
+                                        <optgroup label="<?= ev($opt['group']) ?>">
+                                            <?php foreach ($opt['options'] as $o): ?>
+                                                <option value="<?= ev($o) ?>"><?= ev($o) ?></option>
+                                            <?php endforeach; ?>
+                                        </optgroup>
+                                    <?php else: ?>
+                                        <option value="<?= ev($opt) ?>"><?= ev($opt) ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <button type="button" id="clearFilters" class="cl-clear">Clear Filters</button>
                     </div>
+
+                    <p class="cl-count" id="resultCount" aria-live="polite"></p>
 
                     <div class="cl-scroll">
                         <table class="cl-table" id="logTable">
@@ -137,7 +193,12 @@ foreach ($logs as $log) {
                             </thead>
                             <tbody>
                                 <?php foreach ($logs as $log): ?>
-                                    <tr data-condition="<?= ev($log['condition']) ?>">
+                                    <tr data-condition="<?= ev($log['condition']) ?>"
+                                        data-status="<?= ev($log['status']) ?>"
+                                        data-date="<?= ev($log['date']) ?>"
+                                        data-date-label="<?= ev(date('M d, Y', strtotime($log['date']))) ?>"
+                                        data-remarks="<?= ev($log['remarks']) ?>"
+                                        data-search="<?= ev(strtolower($log['status'] . ' ' . $log['remarks'])) ?>">
                                         <td class="date"><?= date('M d, Y', strtotime($log['date'])) ?></td>
                                         <td><?= facility_badge($log['condition']) ?></td>
                                         <td><?= ev($log['status']) ?></td>
@@ -150,10 +211,13 @@ foreach ($logs as $log) {
                                                 <span class="cl-chg"><?= facility_badge($log['from']) ?> <i class="fa-solid fa-arrow-right text-xs"></i> <?= facility_badge($log['condition']) ?></span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><?= ev($log['remarks']) ?></td>
+                                        <td class="cl-remarks-cell">
+                                            <div class="cl-remarks"><?= ev($log['remarks']) ?></div>
+                                            <button type="button" class="cl-more" hidden>View full text</button>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
-                                <tr class="cl-empty" id="noResults" style="display:none"><td colspan="5">No records match your search.</td></tr>
+                                <tr class="cl-empty" id="noResults" style="display:none"><td colspan="5">No records match your filters.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -162,32 +226,110 @@ foreach ($logs as $log) {
         </div>
     </main>
 
+    <dialog class="cl-modal" id="remarksModal" aria-labelledby="remarksModalTitle">
+        <div class="cl-modal-head">
+            <h4 id="remarksModalTitle">Remarks</h4>
+            <button type="button" class="cl-modal-close" id="remarksClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="cl-modal-body">
+            <div class="cl-modal-meta" id="remarksMeta"></div>
+            <p class="cl-modal-text" id="remarksText"></p>
+        </div>
+    </dialog>
+
     <script>
         (function () {
             const rows = Array.from(document.querySelectorAll('#logTable tbody tr[data-condition]'));
             const search = document.getElementById('logSearch');
             const filter = document.getElementById('logFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const startDate = document.getElementById('startDate');
+            const endDate = document.getElementById('endDate');
+            const clearBtn = document.getElementById('clearFilters');
+            const count = document.getElementById('resultCount');
             const none = document.getElementById('noResults');
             const exportBtn = document.getElementById('exportBtn');
+
+            const modal = document.getElementById('remarksModal');
+            const modalMeta = document.getElementById('remarksMeta');
+            const modalText = document.getElementById('remarksText');
+
+            function updateOverflow() {
+                rows.forEach(row => {
+                    if (row.style.display === 'none') return;
+                    const text = row.querySelector('.cl-remarks');
+                    const btn = row.querySelector('.cl-more');
+                    const clamped = text.scrollHeight > text.clientHeight + 1;
+                    const longText = row.dataset.remarks.length > 100;
+                    btn.hidden = !(clamped || longText);
+                });
+            }
 
             function applyFilters() {
                 const query = search.value.trim().toLowerCase();
                 const condition = filter.value;
+                const status = statusFilter.value;
+                const from = startDate.value;
+                const to = endDate.value;
+
+                endDate.min = from || '';
+                startDate.max = to || '';
+
                 let shown = 0;
 
                 rows.forEach(row => {
-                    const matchesCondition = !condition || row.dataset.condition === condition;
-                    const matchesSearch = !query || row.textContent.toLowerCase().includes(query);
-                    const visible = matchesCondition && matchesSearch;
+                    const d = row.dataset.date;
+                    const visible =
+                        (!condition || row.dataset.condition === condition) &&
+                        (!status || row.dataset.status === status) &&
+                        (!from || d >= from) &&
+                        (!to || d <= to) &&
+                        (!query || row.dataset.search.includes(query));
+
                     row.style.display = visible ? '' : 'none';
                     if (visible) shown++;
                 });
 
                 none.style.display = shown ? 'none' : '';
+                count.textContent = 'Showing ' + shown + ' of ' + rows.length + ' records';
+                updateOverflow();
             }
 
-            search.addEventListener('input', applyFilters);
-            filter.addEventListener('change', applyFilters);
+            [search, startDate, endDate].forEach(el => el.addEventListener('input', applyFilters));
+            [filter, statusFilter].forEach(el => el.addEventListener('change', applyFilters));
+
+            clearBtn.addEventListener('click', function () {
+                search.value = '';
+                filter.value = '';
+                statusFilter.value = '';
+                startDate.value = '';
+                endDate.value = '';
+                applyFilters();
+            });
+
+            window.addEventListener('resize', updateOverflow);
+            window.addEventListener('load', updateOverflow);
+
+            document.querySelector('#logTable tbody').addEventListener('click', function (e) {
+                const btn = e.target.closest('.cl-more');
+                if (!btn) return;
+                const row = btn.closest('tr');
+                modalMeta.textContent = '';
+                const meta = document.createElement('span');
+                meta.textContent = row.dataset.dateLabel + ' \u2022 ' + row.dataset.condition + ' \u2022 ' + row.dataset.status;
+                modalMeta.appendChild(meta);
+                modalText.textContent = row.dataset.remarks;
+                if (typeof modal.showModal === 'function') {
+                    modal.showModal();
+                } else {
+                    modal.setAttribute('open', '');
+                }
+            });
+
+            document.getElementById('remarksClose').addEventListener('click', () => modal.close());
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) modal.close();
+            });
 
             exportBtn.addEventListener('click', function () {
                 const lines = [['Date', 'Condition', 'Status', 'Change', 'Remarks']];
@@ -195,11 +337,11 @@ foreach ($logs as $log) {
                 rows.filter(row => row.style.display !== 'none').forEach(row => {
                     const cells = row.querySelectorAll('td');
                     lines.push([
-                        cells[0].innerText.trim(),
-                        cells[1].innerText.trim(),
-                        cells[2].innerText.trim(),
+                        row.dataset.dateLabel,
+                        row.dataset.condition,
+                        row.dataset.status,
                         cells[3].innerText.replace(/\s+/g, ' ').trim(),
-                        cells[4].innerText.trim()
+                        row.dataset.remarks
                     ]);
                 });
 
@@ -218,6 +360,8 @@ foreach ($logs as $log) {
                 link.remove();
                 URL.revokeObjectURL(url);
             });
+
+            applyFilters();
         })();
     </script>
 </body>

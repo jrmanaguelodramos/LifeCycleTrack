@@ -50,6 +50,9 @@
             $equipmentPages = [
                 'equipments_list.php',
                 'viewequip.php',
+                'addequipment.php',
+                'edit_equipment.php',
+                'equipment_logs.php'
             ];?>
 
         <li>
@@ -172,7 +175,6 @@
             </button>
         </div>
         
-
         <button id="profile-toggle"
                 class="sidebar-profile">
 
@@ -209,8 +211,6 @@
             </div>
         </div>
     </div>
-
-
 
     <script>
         const conditionToggle = document.getElementById('condition-toggle');
@@ -281,4 +281,5 @@
         function confirmLogout() {
             window.location.href = '../auth/logout.php';
         }
+
     </script>

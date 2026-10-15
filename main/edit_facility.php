@@ -44,7 +44,7 @@ $lockIcon = '<i class="fa-solid fa-lock ml-1 text-xs text-gray-400" title="Locke
     <title>Edit Facility</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="../src/output.css">
+    <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
 </head>
 
@@ -52,16 +52,19 @@ $lockIcon = '<i class="fa-solid fa-lock ml-1 text-xs text-gray-400" title="Locke
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
-        <h1 class="text-3xl font-bold">Edit Facility</h1>
-        <p class="mt-2 mb-3 text-gray-600">Update facility information</p>
 
-        <nav aria-label="Breadcrumb">
-            <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
-                <li><a href="facilities_list.php" class="font-medium no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
-                <li><i class="fa-solid fa-chevron-right mx-2 text-xs"></i><a href="viewfacility.php?id=<?= (int) $facility['id'] ?>" class="font-medium no-underline hover:underline">Profile/Information</a></li>
-                <li><i class="fa-solid fa-chevron-right mx-2 text-xs"></i><a href="edit_facility.php?id=<?= (int) $facility['id'] ?>" class="font-medium no-underline hover:underline">Edit Information</a></li>
+       <nav aria-label="Breadcrumb" class="mb-2">
+            <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+                <li><a href="facilities_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-regular fa-building mr-2"></i>Facilities List</a></li>
+                <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                <li><a href="viewfacility.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> Information</a></li>
+                <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                <li aria-current="page" class="font-medium text-blue-900 ">Edit Information</li>
             </ol>
         </nav>
+
+        <h1 class="text-3xl font-bold">Edit Facility</h1>
+        <p class="mt-2 mb-3 text-gray-600">Update facility information</p>
 
         <?php if ($error !== ''): ?>
             <div class="mb-5 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"><?= ev($error) ?></div>
@@ -159,8 +162,8 @@ $lockIcon = '<i class="fa-solid fa-lock ml-1 text-xs text-gray-400" title="Locke
             </div>
 
             <div class="flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-5">
-                <a href="view_facility.php?id=<?= (int) $facility['id'] ?>" class="cursor-pointer rounded-[10px] border border-slate-300 bg-white p-3 px-4 text-sm text-gray-700">Cancel</a>
-                <button type="reset" class="cursor-pointer rounded-[10px] border border-slate-300 bg-white p-3 px-4 text-sm text-gray-700">Undo</button>
+                <a href="#" class="cursor-pointer rounded-[10px] border border-slate-300 bg-white p-3 px-4 text-sm text-gray-700">Cancel</a>
+                <button type="reset" class="cursor-pointer rounded-[10px] border border-slate-300 bg-white p-3 px-4 text-sm text-gray-700">Reset Changes</button>
                 <button type="submit" class="cursor-pointer rounded-[10px] border border-[#15588F] bg-[#15588F] p-2 px-4 text-sm text-white hover:bg-[#103F6C]">
                     <i class="fa-solid fa-floppy-disk mr-2"></i> Save Changes
                 </button>
