@@ -2,6 +2,7 @@
 
 @source "../main";
 @source "../auth";
+@source "../**/*.{html,js}"; 
 
 @theme {
     --color-brand-primary: #1e40af;

@@ -74,9 +74,12 @@ $conditionClass = $conditionColors[$condition] ?? 'bg-gray-100 text-gray-700';
             View detailed information about this equipment.
         </p>
 
-        <a href="equipments_list.php" class="flex items-center font-bold text-[#103F6C]" style="text-decoration: none;">
-            <i class="fa-sharp fa-solid fa-arrow-left px-3"></i>Back to Equipments List
-        </a>
+        <nav aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
+                <li><a href="equipments_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
+                <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewequip.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
+            </ol>
+        </nav>
 
         <?php if (!$equipment): ?>
             <div class="mt-6 rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">

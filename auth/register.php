@@ -365,7 +365,7 @@
                         aria-pressed="false"
                         class="absolute right-4 top-1/2 -translate-y-1/2
                                text-slate-500 hover:text-slate-700">
-                        <i class="fa-regular fa-eye"></i>
+                        <i class="fa-regular fa-eye cursor-pointer"></i>
                     </button>
 
                 </div>

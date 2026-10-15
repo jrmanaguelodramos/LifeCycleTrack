@@ -255,12 +255,13 @@ function lifecycleChart(int $score, array $counts): void
     <title>Dashboard</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="../src/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../src/output.css">
 </head>
-
-<body class="text-black bg-gray-100 min-h-screen">
+            
+<!--bg-[#F4F7FB]-->
+<body>
 
     <?php include __DIR__ . '/sidebar.php'; ?>
 

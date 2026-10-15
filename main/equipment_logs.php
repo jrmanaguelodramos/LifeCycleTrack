@@ -74,9 +74,14 @@ function badge(string $c): string
         <div class="cl-page">
             <h1 class="text-3xl font-bold">Condition History</h1>
             <p class="mt-2 mb-3 text-gray-600">View the condition records and inspection history of this equipment.</p>
-            <a href="viewequip.php?id=<?= ev($equipment['id']) ?>" class="text-[#103F6C] font-bold flex items-center mb-5">
-                <i class="fa-solid fa-arrow-left px-3"></i>Back to Equipment Profile
-            </a>
+
+           <nav aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
+                    <li><a href="equipments_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
+                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewequip.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
+                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="equipment_logs.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Condition History</a></li>
+                </ol>
+            </nav>
 
             <div class="cl-wrap">
                 <div class="cl-head">

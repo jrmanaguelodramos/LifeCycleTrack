@@ -420,6 +420,15 @@
         margin-bottom: 10px;
     }
 
+    .modal-icon i {
+        font-size: 50px;
+        color: #ef4444;
+        margin-bottom: 10px;
+        background-color: rgba(255, 0, 0, 0.2);
+        padding: 10px;
+        border-radius: 15px;
+    }
+
     .actions button {
         display: flex;
         align-items: center;

@@ -69,9 +69,14 @@ foreach ($logs as $log) {
         <div class="cl-page">
             <h1 class="text-3xl font-bold">Facility Condition History</h1>
             <p class="mt-2 mb-3 text-gray-600">View the condition records and inspection history of this facility.</p>
-            <a href="viewfacility.php?id=<?= (int) $facility['id'] ?>" class="text-[#103F6C] font-bold flex items-center mb-5">
-                <i class="fa-solid fa-arrow-left px-3"></i>Back to Facility Profile
-            </a>
+
+            <nav aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2" style="color: #0E3A63; font-size:18px;">
+                    <li><a href="facilities_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
+                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewfacility.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
+                    <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="facility_logs.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Condition History</a></li>
+                </ol>
+            </nav>
 
             <div class="cl-wrap">
                 <div class="cl-head">

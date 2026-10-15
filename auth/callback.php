@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 
 <body>
-<div class="min-h-screen flex items-center justify-center bg-[#f2f3f5] p-6 font-['Nunito','Segoe_UI',Roboto,Arial,sans-serif]">
+<div class="min-h-screen flex items-center justify-center p-6 font-['Nunito','Segoe_UI',Roboto,Arial,sans-serif]">
 
     <main role="status" aria-live="polite"
           class="w-full max-w-sm bg-white rounded-2xl border-l-[5px] border-[#10375f] shadow-lg p-8 text-center">

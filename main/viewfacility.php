@@ -64,21 +64,23 @@ $facilityAge = $acquisitionYear
 </head>
 
 <body>
-
     <?php include('sidebar.php'); ?>
 
+    
     <main class="ml-64 p-8">
+          <nav aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-2 mb-3" style="color: #0E3A63; font-size:18px;">
+                <li><a href="facilities_list.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline"><i class="fa-solid fa-list mr-1"></i> Back to List</a></li>
+                <li><i class="fa-solid fa-chevron-right text-xs mx-2"></i> <a href="viewfacility.php" class="font-medium hover:text-[#0E3A63] no-underline hover:underline">Profile/Information</a></li>
+            </ol>
+        </nav>
+
         <h1 class="text-3xl font-bold">
             Facility Profile / Information
         </h1>
         <p class="mt-2 mb-3 text-gray-500"> View detailed information about this facility.</p>
 
-        <a href="facilities_list.php"
-            class="flex items-center font-bold text-[#103F6C]"
-            style="text-decoration: none;">
-            <i class="fa-sharp fa-solid fa-arrow-left px-3"></i>
-            Back to Facilities List
-        </a>
+      
 
         <?php if (!$facility): ?>
 
