@@ -92,7 +92,6 @@ if (
 }
 ?>
 
-<!-- Add Modal -->
 <div id="equipmentModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60">
 
     <div class="w-[95%] max-w-207.5 bg-white shadow-2xl">

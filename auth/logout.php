@@ -1,10 +1,9 @@
 <?php
+    session_start();
 
-session_start();
+    $_SESSION = [];
 
-$_SESSION = [];
+    session_destroy();
 
-session_destroy();
-
-header("Location: login.php");
+    header("Location: login.php");
 exit;

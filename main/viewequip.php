@@ -7,32 +7,32 @@ if (empty($_SESSION['access_token'])) {
     header('Location: ../auth/login.php');
     exit;
 }
+$equipmentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 1;
 
-require_once __DIR__ . '/../config/database.php';
+//sample data lang to
+$sampleEquipments = [
+    1 => [
+        'id' => 1,
+        'name' => 'Printer',
+        'asset_type' => 'Fixed Asset',
+        'category' => 'IT Equipment',
+        'quantity' => 1,
+        'brand' => 'Canon',
+        'model' => 'IP2770',
+        'location' => '2nd Floor - Admin Room',
+        'acquisition_year' => 2022,
+        'is_estimated_year' => true,
+        'cost_type' => 'Original cost',
+        'amount' => 4500,
+        'usage_schedule' => 'Daily',
+        'hours_per_day' => 6,
+        'condition' => 'Good',
+        'date_acquired' => null,
+        'remarks' => '',
+    ],
+];
 
-// Get equipment ID from the URL
-$equipmentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
-
-if (!$equipmentId) {
-    header('Location: equipments_list.php');
-    exit;
-}
-
-// Retrieve equipment information from PostgreSQL
-$stmt = $pdo->prepare(
-    'SELECT id, name, asset_type, location, "condition",
-            brand, model, date_acquired, remarks
-     FROM assets
-     WHERE id = :id
-       AND asset_type = :asset_type'
-);
-
-$stmt->execute([
-    'id' => $equipmentId,
-    'asset_type' => 'equipment'
-]);
-
-$equipment = $stmt->fetch(PDO::FETCH_ASSOC);
+$equipment = $sampleEquipments[$equipmentId] ?? null;
 
 if (!$equipment) {
     http_response_code(404);
@@ -40,7 +40,8 @@ if (!$equipment) {
 
 function escapeHtml($value): string
 {
-    return htmlspecialchars((string) ($value ?? 'N/A'), ENT_QUOTES, 'UTF-8');
+    $value = ($value === null || $value === '') ? 'N/A' : $value;
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 }
 
 $condition = strtolower($equipment['condition'] ?? '');
@@ -60,8 +61,9 @@ $conditionClass = $conditionColors[$condition] ?? 'bg-gray-100 text-gray-700';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Equipment Profile / Information</title>
-    <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="../src/output.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
 </head>
 
@@ -69,314 +71,165 @@ $conditionClass = $conditionColors[$condition] ?? 'bg-gray-100 text-gray-700';
 
     <?php include('sidebar.php'); ?>
 
-    <main class ="ml-64 p-8" >
-        <h1 class="text-3xl font-bold ">
-        Equipment Profile / Information
-        </h1>
+    <main class="ml-64 p-8">
+         <nav aria-label="Breadcrumb" class="mb-2">
+            <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+                <li><a href="equipments_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-solid fa-wrench mr-2"></i>Equipments List</a></li>
+                <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
+                <li aria-current="page" class="font-medium text-blue-900 ">Information</li>
+            </ol>
+        </nav>
+
+        <h1 class="text-3xl font-bold">Equipment Profile / Information</h1>
 
         <p class="mt-2 mb-3 text-gray-500">
             View detailed information about this equipment.
         </p>
-        <a href="equipments_list.php" class="text-[#103F6C] font-bold flex items-center style='text-decoration: none;'">
-            <i class="fa-sharp fa-solid fa-arrow-left px-3"></i>Back to Equipments List
-        </a>
-        
-        <div class="ml-10 min-w-0 p-5">
 
-        <div class="mt-2 w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div class="mb-5 flex flex-wrap items-start gap-4">
-                <img
-                    src="../img/logo.png"
-                    alt="Printing Machine"
-                    class="h-28 w-38 shrink-0 rounded-md border border-gray-200 object-contain p-2 shadow-sm">
-
-                <div class="min-w-0 flex-1">
-                    <h2 class="text-2xl font-extrabold">
-                        Printer
-                    </h2>
-
-                    <p class="mt-1 text-sm font-bold">
-                        0001
-                    </p>
-
-                    <span class="mt-2 inline-flex items-center gap-2 rounded-md bg-green-100 px-3 py-1 text-sm font-bold text-green-800">
-                        <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
-                        Good
-                    </span>
-
-                    <p class="mt-2 text-sm text-gray-600">
-                        Printer for document printing
-                    </p>
-
-                </div>
-
-                <div class="flex flex-wrap gap-2">
-
-                    <button
-                        type="button"
-                        id="openFacilityModal"
-                        class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
-                        <i class="fa-solid fa-pen"></i>
-                        Edit Information
-                    </button>
-
-                    <button
-                        type="button"
-                        onclick="viewConditionHistory()"
-                        class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                        Condition History
-                    </button>
-
-                </div>
-
+        <?php if (!$equipment): ?>
+            <div class="mt-6 rounded-lg border border-red-200 bg-red-50 p-6 text-red-700">
+                Equipment not found.
             </div>
+        <?php else:
+            $acqYear = $equipment['acquisition_year']
+                ?? (!empty($equipment['date_acquired']) ? date('Y', strtotime($equipment['date_acquired'])) : null);
+            $assetAge = $acqYear ? max(0, (int) date('Y') - (int) $acqYear) . ' year(s)' : null;
+            $amount = isset($equipment['amount']) && $equipment['amount'] !== ''
+                ? '₱' . number_format((float) $equipment['amount'], 2)
+                : null;
+            $hours = isset($equipment['hours_per_day']) && $equipment['hours_per_day'] !== ''
+                ? $equipment['hours_per_day'] . ' hrs'
+                : null;
+        ?>
 
-            <section class="mb-3 rounded-md border border-slate-300 bg-white p-4">
+        <div class="min-w-0 p-3">
+            <div class="mt-2 w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start gap-4">
+                    <img src="../img/logo.png" alt="<?= escapeHtml($equipment['name']) ?>"
+                         class="h-28 w-38 shrink-0 rounded-md border border-gray-200 object-contain p-2 shadow-sm">
 
-                <h3 class="mb-4 flex items-center gap-2 text-lg font-bold">
-                    <i class="fa-solid fa-building-columns"></i>
-                    Basic Information
-                </h3>
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-2xl font-extrabold"><?= escapeHtml($equipment['name']) ?></h2>
+                        <p class="mt-1 text-sm font-bold"><?= str_pad((string) $equipment['id'], 4, '0', STR_PAD_LEFT) ?></p>
 
-                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div class="space-y-2 border-gray-200 md:border-r md:pr-6">
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Category</span>
-                            <span class="text-gray-400">:</span>
-                            <span>Facility</span>
-                        </div>
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Brand</span>
-                            <span class="text-gray-400">:</span>
-                            <span>Buckshot</span>
-                        </div>
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Model</span>
-                            <span class="text-gray-400">:</span>
-                            <span>420</span>
-                        </div>
-
-                    </div>
-
-                    <div class="space-y-2">
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Located at</span>
-                            <span class="text-gray-400">:</span>
-                            <span>Front Office</span>
-                        </div>
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Date Acquired</span>
-                            <span class="text-gray-400">:</span>
-                            <span>September 10, 2022</span>
-                        </div>
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Warranty</span>
-                            <span class="text-gray-400">:</span>
-                            <span>September 10, 2027</span>
-                        </div>
-
-                        <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
-                            <span class="text-gray-500">Assigned to</span>
-                            <span class="text-gray-400">:</span>
-                            <span>Front Office</span>
-                        </div>
-
-                    </div>
-
-                </div>
-            </section>
-
-            <div class="grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2">
-                <section class="min-w-0 rounded-md border border-slate-300 bg-white p-4">
-
-                    <h3 class="mb-4 flex items-center gap-2 text-lg font-bold">
-                        <i class="fa-solid fa-gear"></i>
-                        Additional Details
-                    </h3>
-
-                    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                        <div class="space-y-2 border-gray-200 sm:border-r sm:pr-4">
-
-                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] gap-2 text-sm">
-                                <span class="text-gray-500">Condition</span>
-                                <span class="text-gray-400">:</span>
-                                <span>
-                                    <span class="rounded bg-green-100 px-2 py-1 text-xs font-bold text-green-800">
-                                        Good
-                                    </span>
-                                </span>
-                            </div>
-
-                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] gap-2 text-sm">
-                                <span class="text-gray-500">Last Maintenance</span>
-                                <span class="text-gray-400">:</span>
-                                <span>May 15, 2026</span>
-                            </div>
-
-                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] gap-2 text-sm">
-                                <span class="text-gray-500">Remarks</span>
-                                <span class="text-gray-400">:</span>
-                                <span>None</span>
-                            </div>
-
-                        </div>
-
-                        <div class="space-y-2">
-                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] gap-2 text-sm">
-                                <span class="text-gray-500">Supplier</span>
-                                <span class="text-gray-400">:</span>
-                                <span>Spigol</span>
-                            </div>
-
-                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1fr)] gap-2 text-sm">
-                                <span class="text-gray-500">ID Number</span>
-                                <span class="text-gray-400">:</span>
-                                <span>011</span>
-                            </div>
-
-                        </div>
-
-                    </div>
-                </section>
-
-                <section class="flex min-w-0 flex-col rounded-md border border-slate-300 bg-white p-4">
-                    <h3 class="mb-4 flex items-center gap-2 text-lg font-bold">
-                        <i class="fa-solid fa-note-sticky"></i>
-                        Remarks
-                    </h3>
-
-                    <div class="min-h-28 flex-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-600">
-                        No additional remarks recorded for this equipment.
-                    </div>
-                </section>
-            </div>
-        </div>
-</div>
-
-
-        <?php
-            $modal = __DIR__ . '/edit_equipment.php';
-
-            if (file_exists($modal)) {
-                include $modal;
-            } else {
-                echo "File NOT found: " . $modal;
-        }?>
-
-            <!-- Equipment Header -->
-            <section class="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="flex h-16 w-16 items-center justify-center rounded-xl bg-blue-50 text-[#103F6C]">
-                            <i class="fa-solid fa-toolbox text-3xl"></i>
-                        </div>
-
-                        <div>
-                            <p class="text-sm text-gray-500">
-                                Equipment ID: #<?= escapeHtml($equipment['id']) ?>
-                            </p>
-                            <h2 class="text-2xl font-bold text-gray-800">
-                                <?= escapeHtml($equipment['name']) ?>
-                            </h2>
-                            <p class="mt-1 text-sm text-gray-500">
-                                <?= escapeHtml($equipment['brand']) ?>
-                                <?= escapeHtml($equipment['model']) ?>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <span class="inline-flex rounded-full px-4 py-2 text-sm font-semibold <?= $conditionClass ?>">
+                        <span class="mt-2 inline-flex items-center gap-2 rounded-md px-3 py-1 text-sm font-bold <?= $conditionClass ?>">
+                            <span class="h-2.5 w-2.5 rounded-full bg-current"></span>
                             <?= escapeHtml($equipment['condition'] ?: 'Not assessed') ?>
                         </span>
                     </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <a href="edit_equipment.php" 
+                                class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
+                            <i class="fa-solid fa-pen"></i> Edit Information
+                        </a>
+                        <a href="equipment_logs.php"
+                                class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Condition History
+                        </a>
+                    </div>
                 </div>
-            </section>
 
-            <!-- Equipment Information -->
-            <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="mb-6 text-xl font-bold text-gray-800">
-                    <i class="fa-solid fa-circle-info mr-2 text-[#103F6C]"></i>
-                    Equipment Information
-                </h3>
+                <section class="mb-3 rounded-md border border-slate-300 bg-white p-4">
+                    <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
+                        <i class="fa-solid fa-circle-info"></i> Equipment Information
+                    </h3>
 
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        <div class="space-y-2 border-gray-200 md:border-r md:pr-6">
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Equipment Name</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['name']) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Asset Type</span><span class="text-gray-400">:</span>
+                                <span class="capitalize"><?= escapeHtml($equipment['asset_type']) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Category</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['category'] ?? null) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Quantity</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['quantity'] ?? 1) ?></span>
+                            </div>
+                        </div>
 
-                    <div>
-                        <p class="text-sm text-gray-500">Equipment Name</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['name']) ?>
-                        </p>
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Brand</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['brand']) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Model</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['model']) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Assigned Office / Location</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['location']) ?></span>
+                            </div>
+                        </div>
                     </div>
+                </section>
 
-                    <div>
-                        <p class="text-sm text-gray-500">Equipment ID</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['id']) ?>
-                        </p>
-                    </div>
+                <div class="mb-3 grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2">
+                    <section class="min-w-0 rounded-md border border-slate-300 bg-white p-4">
+                        <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
+                            <i class="fa-solid fa-peso-sign"></i> Acquisition and Financial Information
+                        </h3>
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Acquisition Year</span><span class="text-gray-400">:</span>
+                                <span>
+                                    <?= escapeHtml($acqYear) ?>
+                                    <?php if (!empty($equipment['is_estimated_year'])): ?>
+                                        <span class="ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Estimated</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Cost Type</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['cost_type'] ?? null) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Amount</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($amount) ?></span>
+                            </div>
+                        </div>
+                    </section>
 
-                    <div>
-                        <p class="text-sm text-gray-500">Category</p>
-                        <p class="mt-1 font-semibold capitalize text-gray-800">
-                            <?= escapeHtml($equipment['asset_type']) ?>
-                        </p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm text-gray-500">Brand</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['brand']) ?>
-                        </p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm text-gray-500">Model</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['model']) ?>
-                        </p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm text-gray-500">Location</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['location']) ?>
-                        </p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm text-gray-500">Date Acquired</p>
-                        <p class="mt-1 font-semibold text-gray-800">
-                            <?= escapeHtml($equipment['date_acquired']) ?>
-                        </p>
-                    </div>
-
-                    <div>
-                        <p class="text-sm text-gray-500">Current Condition</p>
-                        <p class="mt-1 font-semibold capitalize text-gray-800">
-                            <?= escapeHtml($equipment['condition'] ?: 'Not assessed') ?>
-                        </p>
-                    </div>
-
+                    <section class="min-w-0 rounded-md border border-slate-300 bg-white p-4">
+                        <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
+                            <i class="fa-solid fa-gear"></i> Usage
+                        </h3>
+                        <div class="space-y-2">
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Usage Schedule</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($equipment['usage_schedule'] ?? null) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Hours of Use per Day</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($hours) ?></span>
+                            </div>
+                            <div class="grid grid-cols-[minmax(0,1fr)_12px_minmax(0,1.2fr)] gap-2 text-sm">
+                                <span class="text-gray-500">Current Asset Age</span><span class="text-gray-400">:</span>
+                                <span><?= escapeHtml($assetAge) ?></span>
+                            </div>
+                        </div>
+                    </section>
                 </div>
-            </section>
 
-            <!-- Remarks -->
-            <section class="mt-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                <h3 class="mb-3 text-xl font-bold text-gray-800">
-                    <i class="fa-solid fa-clipboard-list mr-2 text-[#103F6C]"></i>
-                    Remarks / Additional Information
-                </h3>
-
-                <p class="whitespace-pre-wrap text-gray-600"><?= escapeHtml($equipment['remarks'] ?: 'No remarks available.') ?></p>
-            </section>
-
+                <div class="grid grid-cols-1 items-stretch gap-3">
+                    <section class="flex min-w-0 flex-col rounded-md border border-slate-300 bg-white p-4">
+                        <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
+                            <i class="fa-solid fa-note-sticky"></i> Remarks
+                        </h3>
+                        <div class="min-h-28 flex-1 whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-600"><?= escapeHtml($equipment['remarks'] ?: 'No additional remarks recorded for this equipment.') ?></div>
+                    </section>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </main>
 
 </body>

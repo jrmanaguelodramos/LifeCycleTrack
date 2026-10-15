@@ -297,3 +297,38 @@
     background: #e5eef5;
 }
 
+main > .flex.flex-wrap.items-end {
+    width: 100%;
+}
+
+main > .flex.flex-wrap.items-end > div:last-child {
+    margin-left: auto;
+}
+
+        .clear-filters-btn {
+            height: 36px;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+            font-family: inherit;
+            font-size: 14px;
+            color: #334155;
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+
+        .clear-filters-btn:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .clear-filters-btn:focus-visible {
+            outline: 2px solid #155B92;
+            outline-offset: 2px;
+        }

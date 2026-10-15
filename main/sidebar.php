@@ -3,7 +3,6 @@
 ?>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
-<!-- NEW: fonts used by the redesigned sidebar (Bricolage Grotesque + Figtree) -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
@@ -33,7 +32,10 @@
         <?php
             $facilityPages = [
                 'facilities_list.php',
-                'viewfacility.php'
+                'viewfacility.php',
+                'edit_facility.php',
+                'facility_logs.php',
+                'addfacility.php'
             ];?>
 
         <li>
@@ -47,7 +49,10 @@
         <?php
             $equipmentPages = [
                 'equipments_list.php',
-                'viewequip.php'
+                'viewequip.php',
+                'addequipment.php',
+                'edit_equipment.php',
+                'equipment_logs.php'
             ];?>
 
         <li>
@@ -170,7 +175,6 @@
             </button>
         </div>
         
-
         <button id="profile-toggle"
                 class="sidebar-profile">
 
@@ -190,29 +194,29 @@
     </div>
 </aside>
 
-   <div id="logoutModal" class="modal-overlay">
-            <div class="modal-box">
-                <div class="modal-icon">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </div>
-
-                <h2>Confirm Logout</h2>
-                <p style="color:black;">Are you sure you want to log out?</p>
-
-                <div class="actions">
-                    <button onclick="closeLogoutModal()">Cancel</button>
-                    <button onclick="confirmLogout()">Logout</button>
-                </div>
+    <div id="logoutModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
+        <div class="w-90 max-w-md rounded-xl bg-white p-6 text-center shadow-xl">
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                <i class="fa-solid fa-right-from-bracket text-3xl text-red-600"></i>
             </div>
+            <h2 class="mb-2 text-xl font-bold text-gray-800">Confirm Logout</h2>
+            <p class="mb-6 text-sm text-gray-500">Are you sure you want to log out?</p>
+            <div class="flex justify-center gap-3">
+                <button type="button" onclick="closeLogoutModal()" class="cursor-pointer rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                    <i class="fa-solid fa-xmark mr-1"></i> Cancel
+                </button>
+                <button type="button" onclick="confirmLogout()" class="cursor-pointer rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700">
+                    <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
-        //condition 
         const conditionToggle = document.getElementById('condition-toggle');
         const conditionDropdown = document.getElementById('condition-dropdown');
         const conditionArrow = document.getElementById('condition-arrow');
 
-        //reports 
         const reportsToggle = document.getElementById('reports-toggle');
         const reportsDropdown = document.getElementById('reports-dropdown');
         const reportsArrow = document.getElementById('reports-arrow');
@@ -244,7 +248,6 @@
             }
         });
 
-        //rpofile
         const profileToggle = document.getElementById('profile-toggle');
         const profileMenu = document.getElementById('profile-menu');
         const profileArrow = document.getElementById('profile-arrow');
@@ -278,4 +281,5 @@
         function confirmLogout() {
             window.location.href = '../auth/logout.php';
         }
+
     </script>
