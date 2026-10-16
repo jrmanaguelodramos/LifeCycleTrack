@@ -2,29 +2,33 @@
 
 $envFile = __DIR__ . '/../.env';
 
-if (!file_exists($envFile)) {
-    die('.env file not found at: ' . $envFile);
+if (!is_file($envFile)) {
+    error_log('LifeCycleTrack: .env file not found.');
+    http_response_code(500);
+    exit('Application configuration is incomplete. Contact the system administrator.');
 }
 
-$env = parse_ini_file($envFile);
-
-if ($env === false) {
-    die('Failed to read .env file. Check its syntax.');
+$env = parse_ini_file($envFile, false, INI_SCANNER_RAW);
+if (!is_array($env)) {
+    error_log('LifeCycleTrack: unable to parse .env file.');
+    http_response_code(500);
+    exit('Application configuration is invalid. Contact the system administrator.');
 }
 
-$host = $env['DB_HOST'] ?? '';
-$port = $env['DB_PORT'] ?? '5432';
-$dbname = $env['DB_DATABASE'] ?? 'postgres';
-$username = $env['DB_USERNAME'] ?? '';
-$password = $env['DB_PASSWORD'] ?? '';
-
-if (
-    $host === '' ||
-    $username === '' ||
-    $password === ''
-) {
-    die('Missing DB_HOST, DB_USERNAME, or DB_PASSWORD in .env.');
+$required = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD'];
+foreach ($required as $key) {
+    if (!isset($env[$key]) || trim((string)$env[$key]) === '') {
+        error_log('LifeCycleTrack: missing required database configuration key ' . $key . '.');
+        http_response_code(500);
+        exit('Application configuration is incomplete. Contact the system administrator.');
+    }
 }
+
+$host = (string)$env['DB_HOST'];
+$port = (string)($env['DB_PORT'] ?? '5432');
+$dbname = (string)($env['DB_DATABASE'] ?? 'postgres');
+$username = (string)$env['DB_USERNAME'];
+$password = (string)$env['DB_PASSWORD'];
 
 try {
     $pdo = new PDO(
@@ -34,18 +38,11 @@ try {
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => true,
-            PDO::ATTR_TIMEOUT => 10,
         ]
     );
 
 } catch (PDOException $e) {
-    error_log('Database connection failed: ' . $e->getMessage());
-
-    if (($env['APP_ENV'] ?? '') === 'development') {
-        die('Database connection failed: ' .
-            htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8'));
-    }
-
-    die('Database connection failed. Check the server logs.');
+    error_log('LifeCycleTrack database connection failed: ' . $e->getMessage());
+    http_response_code(500);
+    exit('The database is temporarily unavailable. Please try again later.');
 }

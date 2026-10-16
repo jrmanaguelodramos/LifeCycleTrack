@@ -1,328 +1,80 @@
 <?php
-session_start();
+declare(strict_types=1);
+require_once __DIR__ . '/_analytics.php';
 
-if (!isset($_SESSION['access_token'])) {
-    header("Location: ../auth/login.php");
-    exit;
+$months = analytics_months($analyticsFrom, $analyticsTo);
+$where = ['a.date_acquired BETWEEN :date_from AND :date_to'];
+$params = [':date_from' => $analyticsFrom, ':date_to' => $analyticsTo];
+if ($analyticsType !== 'all') { $where[] = 'a.asset_type = :asset_type'; $params[':asset_type'] = $analyticsType; }
+if ($analyticsCondition !== 'all') { $where[] = 'a.condition = :condition'; $params[':condition'] = $analyticsCondition; }
+if ($analyticsSearch !== '') {
+    $where[] = '(a.name ILIKE :q1 OR a.location ILIKE :q2 OR COALESCE(a.category, \'\') ILIKE :q3 OR COALESCE(a.brand, \'\') ILIKE :q4 OR COALESCE(a.model, \'\') ILIKE :q5)';
+    foreach ([':q1', ':q2', ':q3', ':q4', ':q5'] as $key) $params[$key] = '%' . $analyticsSearch . '%';
 }
+$whereSql = implode(' AND ', $where);
+$assetsResult = analytics_query_or_empty($pdo, "SELECT a.id, a.name, a.asset_type, a.location, a.condition, a.date_acquired, a.category, " . (analytics_column_exists($pdo, 'assets', 'asset_tag') ? 'a.asset_tag' : "('AST-' || LPAD(a.id::text, 6, '0')) AS asset_tag") . " FROM assets a WHERE $whereSql ORDER BY a.date_acquired DESC NULLS LAST, a.id DESC", $params);
+$assets = $assetsResult['rows'];
+$monthlyResult = analytics_query_or_empty($pdo, "SELECT to_char(date_trunc('month', a.date_acquired), 'YYYY-MM') AS month_key, COUNT(*)::int AS total FROM assets a WHERE $whereSql GROUP BY 1 ORDER BY 1", $params);
+$monthlyMap = [];
+foreach ($monthlyResult['rows'] as $row) $monthlyMap[$row['month_key']] = (int)$row['total'];
+$monthlyLabels = array_column($months, 'label');
+$monthlyValues = array_map(fn($m) => $monthlyMap[$m['key']] ?? 0, $months);
+$assessmentParams = [':date_from' => $analyticsFrom, ':date_to' => $analyticsTo];
+if ($analyticsType !== 'all') $assessmentParams[':asset_type'] = $analyticsType;
+if ($analyticsCondition !== 'all') $assessmentParams[':condition'] = $analyticsCondition;
+if ($analyticsSearch !== '') foreach ([':q1', ':q2', ':q3'] as $key) $assessmentParams[$key] = '%' . $analyticsSearch . '%';
+$assessmentResult = analytics_query_or_empty($pdo, "SELECT to_char(date_trunc('month', ca.assessed_at), 'YYYY-MM') AS month_key, ca.condition, COUNT(*)::int AS total FROM condition_assessments ca JOIN assets a ON a.id=ca.asset_id WHERE ca.assessed_at >= CAST(:date_from AS date) AND ca.assessed_at < (CAST(:date_to AS date) + INTERVAL '1 day')" . ($analyticsType !== 'all' ? ' AND a.asset_type = :asset_type' : '') . ($analyticsCondition !== 'all' ? ' AND a.condition = :condition' : '') . ($analyticsSearch !== '' ? " AND (a.name ILIKE :q1 OR a.location ILIKE :q2 OR COALESCE(a.category, '') ILIKE :q3)" : '') . ' GROUP BY 1, 2 ORDER BY 1', $assessmentParams);
+$assessmentMap = [];
+foreach ($assessmentResult['rows'] as $row) $assessmentMap[$row['month_key']][(string)$row['condition']] = (int)$row['total'];
+$conditionTrendDatasets = [];
+foreach ([['Good','#10b981'],['Fair','#f59e0b'],['Poor','#ef4444']] as [$conditionName,$color]) {
+    $conditionTrendDatasets[] = ['label'=>$conditionName,'data'=>array_map(fn($m)=>$assessmentMap[$m['key']][$conditionName] ?? 0,$months),'borderColor'=>$color,'backgroundColor'=>$color,'tension'=>.25];
+}
+$deteriorationParams = [':date_from' => $analyticsFrom, ':date_to' => $analyticsTo];
+$deteriorationFilters = [];
+if ($analyticsType !== 'all') { $deteriorationFilters[] = 'a.asset_type = :asset_type'; $deteriorationParams[':asset_type'] = $analyticsType; }
+if ($analyticsCondition !== 'all') { $deteriorationFilters[] = 'a.condition = :condition'; $deteriorationParams[':condition'] = $analyticsCondition; }
+if ($analyticsSearch !== '') { $deteriorationFilters[] = "(a.name ILIKE :q1 OR a.location ILIKE :q2 OR COALESCE(a.category, '') ILIKE :q3)"; foreach ([':q1',':q2',':q3'] as $key) $deteriorationParams[$key] = '%' . $analyticsSearch . '%'; }
+$deteriorationFilterSql = $deteriorationFilters ? ' AND ' . implode(' AND ', $deteriorationFilters) : '';
+$deteriorationResult = analytics_query_or_empty($pdo, "WITH history AS (SELECT ca.asset_id, ca.condition, ca.assessed_at, LAG(ca.condition) OVER (PARTITION BY ca.asset_id ORDER BY ca.assessed_at, ca.id) AS previous_condition FROM condition_assessments ca JOIN assets a ON a.id=ca.asset_id WHERE 1=1" . $deteriorationFilterSql . ") SELECT COUNT(*)::int AS events, COUNT(DISTINCT asset_id)::int AS assets FROM history WHERE assessed_at >= CAST(:date_from AS date) AND assessed_at < (CAST(:date_to AS date) + INTERVAL '1 day') AND previous_condition IS NOT NULL AND (CASE condition WHEN 'Good' THEN 1 WHEN 'Fair' THEN 2 WHEN 'Poor' THEN 3 ELSE 0 END) > (CASE previous_condition WHEN 'Good' THEN 1 WHEN 'Fair' THEN 2 WHEN 'Poor' THEN 3 ELSE 0 END)", $deteriorationParams);
+$deteriorationCount = (int)($deteriorationResult['rows'][0]['events'] ?? 0);
+$deterioratedAssets = (int)($deteriorationResult['rows'][0]['assets'] ?? 0);
+$equipmentCount = count(array_filter($assets, fn($a) => $a['asset_type'] === 'equipment'));
+$facilityCount = count(array_filter($assets, fn($a) => $a['asset_type'] === 'facility'));
+$poorCount = count(array_filter($assets, fn($a) => strtolower((string)$a['condition']) === 'poor'));
+$conditionValues = array_map(fn($v) => count(array_filter($assets, fn($a) => $a['condition'] === $v)), ['Good', 'Fair', 'Poor']);
+$typeValues = [$equipmentCount, $facilityCount];
+
+analytics_page_start('Trend Analysis', 'Track asset acquisitions, portfolio composition, and condition across the selected acquisition period.');
+analytics_filter_form($analyticsFrom, $analyticsTo, $analyticsType, $analyticsCondition, $analyticsSearch);
+if (!$assetsResult['ok'] || !$monthlyResult['ok'] || !$assessmentResult['ok'] || !$deteriorationResult['ok']) analytics_notice('Analytics could not be loaded from the database. Check the server logs and database connection before relying on this report.', 'error');
+if (count($assets) === 0) analytics_notice('No assets match these filters. Try a wider date range or reset the filters.', 'info');
+elseif ($deteriorationCount > 0) analytics_notice($deteriorationCount . ' deterioration events were recorded across ' . $deterioratedAssets . ' assets in this period. Review these asset histories and prioritize inspections based on criticality and service impact.', 'warning');
+elseif ($poorCount > 0) analytics_notice($poorCount . ' assets acquired in this period are currently marked Poor. Open the asset records, confirm condition assessments, and route critical items for inspection or maintenance review.', 'warning');
+echo '<section class="analytics-metrics">';
+analytics_metric('Assets acquired in period', number_format(count($assets)), 'Records matching all selected filters', '▦');
+analytics_metric('Poor condition', number_format($poorCount), $assets ? number_format(($poorCount / count($assets)) * 100, 1) . '% of filtered assets' : 'No matching assets', '⚠');
+analytics_metric('Deterioration events', number_format($deteriorationCount), 'Assessments worse than the prior assessment', '↘');
+analytics_metric('Assets deteriorated', number_format($deterioratedAssets), 'Unique assets with deterioration in this period', '⌁');
+echo '</section><section class="analytics-grid">';
+analytics_chart_panel('Monthly acquisitions', 'Number of assets acquired in each month; based on acquisition date.', 'acquisitionChart');
+analytics_chart_panel('Portfolio mix', 'Equipment versus facility records in the filtered results.', 'typeChart');
+analytics_chart_panel('Condition distribution', 'Current recorded condition for the assets acquired in the selected period.', 'conditionChart');
+analytics_chart_panel('Condition assessment trend', 'Count of assessments by recorded grade. Empty periods mean no assessments were recorded, not zero risk.', 'conditionTrendChart', true);
+echo '</section>';
+analytics_table_start(['Asset tag', 'Asset', 'Type', 'Category', 'Location', 'Condition', 'Acquired']);
+if (!$assets) echo '<tr><td colspan="7" class="analytics-empty">No matching records.</td></tr>';
+foreach ($assets as $asset) {
+    echo '<tr><td>' . e((string)$asset['asset_tag']) . '</td><td>' . e((string)$asset['name']) . '</td><td>' . e(ucfirst((string)$asset['asset_type'])) . '</td><td>' . e((string)($asset['category'] ?? '—')) . '</td><td>' . e((string)$asset['location']) . '</td><td>' . analytics_pill((string)$asset['condition']) . '</td><td>' . e(analytics_date_label($asset['date_acquired'] ?? null)) . '</td></tr>';
+}
+analytics_table_end();
 ?>
-<!doctype html>
-<html lang="en">
-
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
-    <title>Trend Analysis</title>
-    <link rel="stylesheet" href="../src/output.css">
-    <link rel="stylesheet" href="../css/sidebar.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="../css/trend.css">
-</head>
-
-<body>
-    <?php
-        include('sidebar.php');
-    ?>
-
-    <main class="report-main">
-        <div class="header">
-            <div>
-                <p class="eyebrow">Reports / Analytics</p>
-                <h1>Trend Analysis</h1>
-                <p class="subtitle">Asset growth, category mix, and condition distribution.</p>
-            </div><button class="btn no-print" onclick="window.print()">Print Report</button>
-        </div>
-        <div class="filters no-print">
-            <div><label>Category</label><select id="cat">
-                    <option value="">All categories</option>
-                    <option>Equipment</option>
-                    <option>Facility</option>
-                </select></div>
-            <div><label>Acquisition period</label><select id="period">
-                    <option value="all">All sample periods</option>
-                    <option value="6">Last 6 months</option>
-                    <option value="12">Last 12 months</option>
-                </select></div><span class="note">Static demo data — no database or Supabase connection.</span>
-        </div>
-        <section class="metrics">
-            <div class="metric">
-                <div class="metric-label">Assets in report</div>
-                <div class="metric-value" id="total">12</div>
-                <div class="note">Sample records</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Equipment</div>
-                <div class="metric-value" id="eq">8</div>
-                <div class="note">Equipment assets</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Facilities</div>
-                <div class="metric-value" id="fac">4</div>
-                <div class="note">Facility assets</div>
-            </div>
-            <div class="metric">
-                <div class="metric-label">Poor condition</div>
-                <div class="metric-value" id="poor">2</div>
-                <div class="note">Need attention</div>
-            </div>
-        </section>
-        <section class="charts">
-            <article class="panel">
-                <h2>Monthly Acquisitions</h2>
-                <p class="desc">Sample acquisitions by month</p>
-                <div class="chartbox"><canvas id="acq"></canvas></div>
-            </article>
-            <article class="panel">
-                <h2>Category Distribution</h2>
-                <p class="desc">Equipment versus facilities</p>
-                <div class="chartbox"><canvas id="catChart"></canvas></div>
-            </article>
-            <article class="panel wide">
-                <h2>Asset Condition</h2>
-                <p class="desc">Condition breakdown for the sample assets</p>
-                <div class="chartbox"><canvas id="cond"></canvas></div>
-            </article>
-        </section>
-
-        <section class="panel insights">
-            <h2>Insights &amp; Recommendations</h2>
-            <p class="desc">Generated automatically from the currently filtered records.
-                Risk rule: Poor condition ≥ 25% = High, 10–24% = Moderate, below 10% = Low.</p>
-            <div class="insight-grid" id="insights"></div>
-        </section>
-
-        <section class="panel table-panel">
-            <div class="table-head">
-                <div>
-                    <h2>Asset Records</h2>
-                    <p class="desc">Example records used in the charts</p>
-                </div><input id="search" class="no-print" placeholder="Search assets...">
-            </div>
-            <div class="scroll">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Asset</th>
-                            <th>Category</th>
-                            <th>Location</th>
-                            <th>Condition</th>
-                            <th>Acquired</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rows"></tbody>
-                </table>
-            </div>
-        </section>
-        <script>
-            const data = [
-                ['AST-001', 'Desktop Computer', 'Equipment', 'Admin Office', 'Good', '2026-05-12'],
-                ['AST-002', 'Generator Set', 'Equipment', 'Utility Room', 'Poor', '2026-05-20'],
-                ['AST-003', 'Administration Building', 'Facility', 'Main Campus', 'Good', '2026-06-03'],
-                ['AST-004', 'Air Conditioning Unit', 'Equipment', 'Room 101', 'Fair', '2026-06-15'],
-                ['AST-005', 'Water Pump', 'Equipment', 'Pump Room', 'Fair', '2026-07-08'],
-                ['AST-006', 'Storage Facility', 'Facility', 'North Wing', 'Good', '2026-07-19'],
-                ['AST-007', 'Network Switch', 'Equipment', 'Server Room', 'Good', '2026-08-02'],
-                ['AST-008', 'Elevator System', 'Equipment', 'Main Building', 'Fair', '2026-08-24'],
-                ['AST-009', 'Training Hall', 'Facility', 'East Campus', 'Good', '2026-09-05'],
-                ['AST-010', 'Office Printer', 'Equipment', 'Admin Office', 'Poor', '2026-09-18'],
-                ['AST-011', 'Fire Alarm System', 'Equipment', 'All Floors', 'Good', '2026-10-01'],
-                ['AST-012', 'Research Building', 'Facility', 'West Campus', 'Good', '2026-10-04']
-            ];
-            Chart.defaults.color = '#64748b';
-            const acq = new Chart(document.getElementById('acq'), {
-                type: 'line',
-                data: {
-                    labels: ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'],
-                    datasets: [{
-                        data: [2, 2, 2, 2, 2, 2],
-                        borderColor: '#2563eb',
-                        backgroundColor: '#2563eb20',
-                        fill: true,
-                        tension: .35
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-            const cc = new Chart(document.getElementById('catChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Equipment', 'Facility'],
-                    datasets: [{
-                        data: [8, 4],
-                        backgroundColor: ['#3b82f6', '#10b981'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-            const co = new Chart(document.getElementById('cond'), {
-                type: 'bar',
-                data: {
-                    labels: ['Good', 'Fair', 'Poor'],
-                    datasets: [{
-                        data: [7, 3, 2],
-                        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e'],
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-
-            function renderInsights(r, m) {
-                const box = document.getElementById('insights');
-                const n = r.length;
-                if (n < 2) {
-                    box.innerHTML = '<div class="empty">Not enough records in this filter to generate insights.</div>';
-                    return;
-                }
-                const months = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'];
-                const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
-                const sum = arr => arr.reduce((x, y) => x + y, 0);
-                const cards = [];
-
-                // 1. Acquisition trend
-                const early = sum(m.slice(0, 3)),
-                    late = sum(m.slice(3));
-                const peak = Math.max(...m);
-                const peakMonths = months.filter((_, i) => m[i] === peak).join(', ');
-                const trend = late > early ? 'Increasing' : late < early ? 'Decreasing' : 'Steady';
-                cards.push({
-                    type: trend === 'Decreasing' ? 'warn' : 'ok',
-                    title: `Acquisition trend: ${trend}`,
-                    basis: `${early} asset(s) were acquired in May–Jul versus ${late} in Aug–Oct. Peak activity: ${peakMonths} (${peak} per month).`,
-                    action: trend === 'Steady' ?
-                        'Procurement is consistent, so maintenance and budget planning can follow a fixed yearly cycle.' :
-                        trend === 'Increasing' ?
-                        'Asset volume is growing. Plan for a matching increase in maintenance staffing, storage, and budget.' :
-                        'Fewer assets are being added. Check whether this is intentional or caused by procurement delays.'
-                });
-
-                // 2. Category mix
-                const eq = r.filter(a => a[2] === 'Equipment').length,
-                    fac = n - eq;
-                const dom = eq >= fac ? 'Equipment' : 'Facility';
-                const domN = Math.max(eq, fac);
-                cards.push({
-                    type: 'info',
-                    title: `${dom} dominates the portfolio (${pct(domN, n)}%)`,
-                    basis: `${eq} equipment (${pct(eq, n)}%) vs ${fac} facility (${pct(fac, n)}%) out of ${n} assets.`,
-                    action: dom === 'Equipment' ?
-                        'Equipment wears out faster than buildings, so prioritize preventive maintenance schedules and spare-parts planning.' :
-                        'Facility-heavy portfolios need larger, long-term repair budgets and regular structural inspections.'
-                });
-
-                // 3. Condition risk (with category cross-check)
-                const poor = r.filter(a => a[4] === 'Poor'),
-                    fair = r.filter(a => a[4] === 'Fair');
-                const poorPct = pct(poor.length, n),
-                    attnPct = pct(poor.length + fair.length, n);
-                const level = poorPct >= 25 ? 'High' : poorPct >= 10 ? 'Moderate' : 'Low';
-                const rate = c => {
-                    const g = r.filter(a => a[2] === c);
-                    return g.length ? pct(g.filter(a => a[4] !== 'Good').length, g.length) : 0;
-                };
-                const eqRate = rate('Equipment'),
-                    facRate = rate('Facility');
-                const worse = eqRate === facRate ? null : (eqRate > facRate ? 'Equipment' : 'Facility');
-                cards.push({
-                    type: level === 'High' ? 'risk' : level === 'Moderate' ? 'warn' : 'ok',
-                    title: `Condition risk: ${level}`,
-                    basis: `${poor.length} Poor (${poorPct}%) and ${fair.length} Fair; ${attnPct}% of assets are not in Good condition. ` +
-                        `Non-good rate: Equipment ${eqRate}% vs Facility ${facRate}%` +
-                        (worse ? `, so ${worse} is the weaker category.` : '.'),
-                    action: level === 'Low' ?
-                        'Overall condition is healthy. Keep routine inspections going.' :
-                        `Allocate maintenance budget first to ${worse || 'both categories'}, and schedule inspections for Fair assets before they degrade to Poor.`
-                });
-
-                // 4. Priority list
-                cards.push({
-                    type: poor.length ? 'risk' : 'ok',
-                    title: poor.length ? 'Priority assets for action' : 'No critical assets',
-                    basis: poor.length ?
-                        poor.map(a => `${a[1]} (${a[0]}, ${a[3]})`).join('; ') + '.' :
-                        'No asset is currently rated Poor in this filter.',
-                    action: poor.length ?
-                        'Inspect these first and decide between repair or replacement. Poor-rated equipment can cause downtime and safety risks.' :
-                        'Focus on keeping Fair assets from declining.'
-                });
-
-                box.innerHTML = cards.map(c => `
-                    <article class="insight ${c.type}">
-                        <h3>${c.title}</h3>
-                        <p><span class="tag">Basis</span>${c.basis}</p>
-                        <p><span class="tag">Recommendation</span>${c.action}</p>
-                    </article>`).join('');
-            }
-
-            function render() {
-                let q = document.getElementById('search').value.toLowerCase(),
-                    c = document.getElementById('cat').value,
-                    p = document.getElementById('period').value,
-                    cut = new Date();
-                if (p !== 'all') cut.setMonth(cut.getMonth() - Number(p));
-                let r = data.filter(a => (!c || a[2] === c) && (p === 'all' || new Date(a[5]) >= cut) && a.join(' ').toLowerCase().includes(q));
-                document.getElementById('rows').innerHTML = r.map(a => `<tr><td>${a[0]}</td><td>${a[1]}</td><td>${a[2]}</td><td>${a[3]}</td><td><span class="pill ${a[4].toLowerCase()}">${a[4]}</span></td><td>${a[5]}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No sample records match.</td></tr>';
-                document.getElementById('total').textContent = r.length;
-                document.getElementById('eq').textContent = r.filter(a => a[2] === 'Equipment').length;
-                document.getElementById('fac').textContent = r.filter(a => a[2] === 'Facility').length;
-                document.getElementById('poor').textContent = r.filter(a => a[4] === 'Poor').length;
-                cc.data.datasets[0].data = ['Equipment', 'Facility'].map(v => r.filter(a => a[2] === v).length);
-                cc.update();
-                co.data.datasets[0].data = ['Good', 'Fair', 'Poor'].map(v => r.filter(a => a[4] === v).length);
-                co.update();
-                acq.data.datasets[0].data = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'].map((_, i) => r.filter(a => new Date(a[5] + 'T00:00:00').getMonth() === i + 4).length);
-                acq.update();
-                renderInsights(r, acq.data.datasets[0].data);
-            }
-
-            ['search', 'cat', 'period'].forEach(id => document.getElementById(id).addEventListener(id === 'search' ? 'input' : 'change', render));
-            render();
-        </script>
-    </main>
-</body>
-
-</html>
+<script>
+const chartDefaults={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{usePointStyle:true,boxWidth:8}}}};
+Chart.defaults.color='#64748b'; Chart.defaults.font.family='Inter, system-ui, sans-serif';
+new Chart(document.getElementById('acquisitionChart'),{type:'line',data:{labels:<?= analytics_json($monthlyLabels) ?>,datasets:[{label:'Acquisitions',data:<?= analytics_json($monthlyValues) ?>,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.12)',fill:true,tension:.3,pointRadius:3}]},options:{...chartDefaults,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+new Chart(document.getElementById('typeChart'),{type:'doughnut',data:{labels:['Equipment','Facility'],datasets:[{data:<?= analytics_json($typeValues) ?>,backgroundColor:['#2563eb','#0f9f79'],borderWidth:0}]},options:{...chartDefaults,plugins:{legend:{position:'bottom'}}}});
+new Chart(document.getElementById('conditionChart'),{type:'bar',data:{labels:['Good','Fair','Poor'],datasets:[{label:'Assets',data:<?= analytics_json($conditionValues) ?>,backgroundColor:['#10b981','#f59e0b','#ef4444'],borderRadius:7}]},options:{...chartDefaults,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+new Chart(document.getElementById('conditionTrendChart'),{type:'line',data:{labels:<?= analytics_json($monthlyLabels) ?>,datasets:<?= analytics_json($conditionTrendDatasets) ?>},options:{...chartDefaults,scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+</script>
+<?php analytics_page_end(); ?>
