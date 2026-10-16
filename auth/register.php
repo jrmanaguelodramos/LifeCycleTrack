@@ -183,7 +183,7 @@ function e(string $v): string
                         </ul>
                     </div>
 
-                    <button type="submit" class="mx-auto flex h-12 w-3/5 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2f80d1] to-[#1b6bb5] text-sm font-bold text-white shadow-[0_10px_20px_-8px_rgba(27,107,181,.7)] transition hover:brightness-105 hover:shadow-[0_14px_24px_-8px_rgba(27,107,181,.75)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#2f80d1]/50" id="submitBtn" disabled><i class="fa-solid fa-user-plus"></i> Create account</button>
+                    <button type="submit" class="cursor-pointer mx-auto flex h-12 w-3/5 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2f80d1] to-[#1b6bb5] text-sm font-bold text-white shadow-[0_10px_20px_-8px_rgba(27,107,181,.7)] transition hover:brightness-105 hover:shadow-[0_14px_24px_-8px_rgba(27,107,181,.75)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#2f80d1]/50" id="submitBtn" disabled><i class="fa-solid fa-user-plus"></i> Create account</button>
                     <p class="mt-3.5 text-center text-[13.5px] text-[#5b6b7c]">Already have an account? <a href="login.php" class="font-bold text-[#1d4fb8] hover:underline">Login</a></p>
                 </form>
             </section>

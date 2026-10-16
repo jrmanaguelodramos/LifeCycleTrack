@@ -2,7 +2,9 @@
 require_once __DIR__ . '/_app.php';
 require_login();
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (!isset($_SESSION['access_token'])) {
     header("Location: ../auth/login.php");

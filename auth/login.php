@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit;
             }
 
+            //para sa test connection sa supabase
             if ($response === false) {
                 error_log('Supabase login connection error: ' . $curlError);
                 $message = 'Unable to connect to the authentication service. Please try again.';
@@ -161,7 +162,7 @@ function e(string $value): string {
                         <a href="#" class="font-bold text-[#1d4fb8] hover:underline">Forgot password?</a>
                     </div>
 
-                    <button type="submit" class="mx-auto flex h-12 w-3/5 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2f80d1] to-[#1b6bb5] text-sm font-bold text-white shadow-[0_10px_20px_-8px_rgba(27,107,181,.7)] transition hover:brightness-105 hover:shadow-[0_14px_24px_-8px_rgba(27,107,181,.75)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#2f80d1]/50" id="loginButton"><i class="fa-solid fa-right-to-bracket"></i> Log In</button>
+                    <button type="submit" class="cursor-pointer mx-auto flex h-12 w-3/5 items-center justify-center gap-2.5 rounded-xl bg-gradient-to-b from-[#2f80d1] to-[#1b6bb5] text-sm font-bold text-white shadow-[0_10px_20px_-8px_rgba(27,107,181,.7)] transition hover:brightness-105 hover:shadow-[0_14px_24px_-8px_rgba(27,107,181,.75)] active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-[#2f80d1]/50" id="loginButton"><i class="fa-solid fa-right-to-bracket"></i> Log In</button>
                 </form>
 
                 <div class="my-4 flex items-center gap-3">
