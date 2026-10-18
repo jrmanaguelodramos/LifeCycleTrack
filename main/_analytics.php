@@ -4,7 +4,6 @@ declare(strict_types=1);
 require_once __DIR__ . '/_app.php';
 require_login();
 
-/** Only call this with table names defined by this application. */
 function analytics_table_exists(PDO $pdo, string $table): bool
 {
     $allowed = ['assets', 'condition_assessments', 'maintenance_records', 'downtime_events', 'lifecycle_events'];
@@ -96,10 +95,16 @@ function analytics_page_start(string $title, string $description): void
 {
     $safeTitle = e($title);
     $safeDescription = e($description);
-    echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+    echo '<!doctype html><html lang="en"><head>';
+    echo '<meta charset="utf-8">';
+    echo '<meta name="viewport" content="width=device-width,initial-scale=1">';
     echo '<title>' . $safeTitle . ' | LifeCycleTrack</title>';
-    echo '<link rel="stylesheet" href="../src/output.css"><link rel="stylesheet" href="../css/sidebar.css"><link rel="stylesheet" href="../css/analytics.css">';
-    echo '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body>';
+    echo '<link rel="stylesheet" href="../src/output.css">';
+    echo '<link rel="stylesheet" href="../css/sidebar.css">';
+    echo '<link rel="stylesheet" href="../css/analytics.css">';
+    echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">';
+    echo '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>';
+    echo '</head><body>';
     include __DIR__ . '/sidebar.php';
     echo '<main class="analytics-main"><header class="analytics-header"><div><p class="analytics-eyebrow">Reports / Decision support</p><h1>' . $safeTitle . '</h1><p class="analytics-subtitle">' . $safeDescription . '</p></div><div class="header-actions no-print"><span class="data-stamp">Generated ' . e(date('M j, Y g:i A')) . '</span><button type="button" class="analytics-button" onclick="window.print()">Print report</button></div></header>';
 }

@@ -164,33 +164,19 @@ $error = '';
                     </div>
                 </div>
 
-            <div class="xl:col-span-2">
-                <h2 class="mb-4 border-b border-slate-200 pb-2 text-lg font-semibold text-[#103F6C]">
-                    Lifecycle Status
-                </h2>
+                <div class="xl:col-span-2">
+                    <h2 class="mb-4 border-b border-slate-200 pb-2 text-lg font-semibold text-[#103F6C]">Lifecycle Status</h2>
+                    <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 xl:mb-0 xl:grid-cols-2">
+                        <div>
+                            <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Current Status <span class="text-red-500">*</span></label>
+                            <select id="status" name="status" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
+                                <option>Good</option><option>Fair</option><option>Poor</option>
+                            </select>
+                        </div>
 
-                <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 xl:mb-0 xl:grid-cols-5">
-                    <div class="md:col-span-1 xl:col-span-2">
-                        <label for="status" class="mb-1 block text-sm font-medium text-gray-700">
-                            Current Status <span class="text-red-500">*</span>
-                        </label>
-
-                        <select id="status" name="status" required
-                            class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
-                            <option>Good</option>
-                            <option>Fair</option>
-                            <option>Poor</option>
-                        </select>
-                    </div>
-
-                        <div class="md:col-span-2 xl:col-span-3">
-                            <label for="remarks" class="mb-1 block text-sm font-medium text-gray-700">
-                                Remarks
-                            </label>
-
-                            <textarea id="remarks" name="remarks" rows="5"
-                                placeholder="Add remarks.."
-                                class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none"></textarea>
+                        <div class="md:col-span-2 xl:col-span-1">
+                            <label for="remarks" class="mb-1 block text-sm font-medium text-gray-700">Remarks</label>
+                            <textarea id="remarks" name="remarks" rows="2" placeholder="Add remarks.." class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none"></textarea>
                         </div>
                     </div>
                 </div>
