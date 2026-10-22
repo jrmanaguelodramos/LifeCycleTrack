@@ -1,10 +1,19 @@
 <?php
 require_once __DIR__ . '/_app.php';
+$search = trim((string)($_GET['search'] ?? ''));
+$filterCondition = trim((string)($_GET['condition'] ?? ''));
+
+$conditionAssets = equipment_condition(
+    $pdo,
+    $search,
+    $filterCondition
+);
 require_login();
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +25,7 @@ require_login();
     <link rel="stylesheet" href="../css/condition.css">
     <link rel="stylesheet" href="../css/equipment_condition.css">
 </head>
+
 <body>
     <?php include 'sidebar.php'; ?>
 
@@ -48,7 +58,7 @@ require_login();
                 <div class="condition-table-container">
                     <table class="condition-table">
                         <thead>
-                             <tr>
+                            <tr>
                                 <th><i class="fa-solid fa-id-card"></i> ID</th>
                                 <th><i class="fa-solid fa-tag"></i> Name</th>
                                 <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
@@ -56,70 +66,37 @@ require_login();
                             </tr>
                         </thead>
                         <tbody>
-                            <!--sample data lang -->
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0001</td>
-                                <td>Printer</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=1" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0002</td>
-                                <td>Airconditioner</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=2" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Unserviceable: for maintenance">
-                                <td>0003</td>
-                                <td>Generator</td>
-                                <td><span class="condition fair"><span></span>Fair</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=3" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0004</td>
-                                <td>Water Dispenser</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=4" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Unserviceable: for repair">
-                                <td>0005</td>
-                                <td>Grass Cutter</td>
-                                <td><span class="condition poor"><span></span>Poor</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=5" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0006</td>
-                                <td>Computer</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=6" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0007</td>
-                                <td>Wheel Barrow</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=7" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
+                            <?php foreach ($conditionAssets as $asset): ?>
+                                <tr
+                                    data-asset-id="<?= (int) $asset['id'] ?>"
+                                    data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
+                                    data-status="">
+                                    <td><?= str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
+
+                                    <td><?= e($asset['name']) ?></td>
+
+                                    <td>
+                                        <?= condition_badge((string) $asset['condition']) ?>
+                                    </td>
+
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="view-button edit-button"
+                                            data-id="<?= (int) $asset['id'] ?>">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                            Edit
+                                        </button>
+
+                                        <a
+                                            href="viewequip.php?id=<?= (int) $asset['id'] ?>"
+                                            class="view-button view-button-action">
+                                            <i class="fa-solid fa-eye"></i>
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                     <p id="noResults" class="hidden py-6 text-center text-gray-500">No equipment matches your search.</p>
@@ -249,258 +226,259 @@ require_login();
     </div>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const table = document.querySelector(".condition-table");
-        const searchInput = document.getElementById("searchInput");
-        const conditionFilter = document.getElementById("conditionFilter");
-        const form = document.getElementById("assessmentForm");
-        const emptyState = document.getElementById("emptyState");
-        const equipmentId = document.getElementById("id");
-        const equipmentName = document.getElementById("name");
-        const panelCondition = document.getElementById("panelCondition");
-        const notes = document.getElementById("notes");
-        const equipStatus = document.getElementById("equipStatus");
-        const noResults = document.getElementById("noResults");
-        const status = document.getElementById("status");
-        const prevButton = document.getElementById("prevPage");
-        const nextButton = document.getElementById("nextPage");
-        const pageNumbers = document.getElementById("pageNumbers");
-        const confirmModal = document.getElementById("confirmModal");
-        const cancelSave = document.getElementById("cancelequipmentConfirm");
-        const confirmSave = document.getElementById("confirmequipmentSave");
-        const rows = Array.from(table.querySelectorAll("tbody tr"));
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.querySelector(".condition-table");
+            const searchInput = document.getElementById("searchInput");
+            const conditionFilter = document.getElementById("conditionFilter");
+            const form = document.getElementById("assessmentForm");
+            const emptyState = document.getElementById("emptyState");
+            const equipmentId = document.getElementById("id");
+            const equipmentName = document.getElementById("name");
+            const panelCondition = document.getElementById("panelCondition");
+            const notes = document.getElementById("notes");
+            const equipStatus = document.getElementById("equipStatus");
+            const noResults = document.getElementById("noResults");
+            const status = document.getElementById("status");
+            const prevButton = document.getElementById("prevPage");
+            const nextButton = document.getElementById("nextPage");
+            const pageNumbers = document.getElementById("pageNumbers");
+            const confirmModal = document.getElementById("confirmModal");
+            const cancelSave = document.getElementById("cancelequipmentConfirm");
+            const confirmSave = document.getElementById("confirmequipmentSave");
+            const rows = Array.from(table.querySelectorAll("tbody tr"));
 
-        const rowsPerPage = 10;
-        const toastTimers = {};
-        let currentPage = 1;
-        let selectedRow = null;
+            const rowsPerPage = 10;
+            const toastTimers = {};
+            let currentPage = 1;
+            let selectedRow = null;
 
-        function showToast(type, message) {
-            const toast = document.getElementById("toast-" + type);
-            const messageElement = document.getElementById("toast-" + type + "-message");
+            function showToast(type, message) {
+                const toast = document.getElementById("toast-" + type);
+                const messageElement = document.getElementById("toast-" + type + "-message");
 
-            if (!toast || !messageElement) return;
+                if (!toast || !messageElement) return;
 
-            clearTimeout(toastTimers[type]);
-            messageElement.textContent = message;
-            toast.classList.remove("translate-x-[120%]", "opacity-0");
-            toast.classList.add("translate-x-0", "opacity-100");
+                clearTimeout(toastTimers[type]);
+                messageElement.textContent = message;
+                toast.classList.remove("translate-x-[120%]", "opacity-0");
+                toast.classList.add("translate-x-0", "opacity-100");
 
-            toastTimers[type] = setTimeout(() => hideToast(type), 3000);
-        }
+                toastTimers[type] = setTimeout(() => hideToast(type), 3000);
+            }
 
-        function hideToast(type) {
-            const toast = document.getElementById("toast-" + type);
-            if (!toast) return;
+            function hideToast(type) {
+                const toast = document.getElementById("toast-" + type);
+                if (!toast) return;
 
-            clearTimeout(toastTimers[type]);
-            toast.classList.remove("translate-x-0", "opacity-100");
-            toast.classList.add("translate-x-[120%]", "opacity-0");
-        }
+                clearTimeout(toastTimers[type]);
+                toast.classList.remove("translate-x-0", "opacity-100");
+                toast.classList.add("translate-x-[120%]", "opacity-0");
+            }
 
-        document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
-            button.addEventListener("click", () => hideToast(button.dataset.dismissToast));
-        });
-
-        function getCondition(row) {
-            return row.querySelector(".condition")?.textContent.trim() || "";
-        }
-
-        function updateCondition(row, value) {
-            const cells = row.querySelectorAll("td");
-            const badge = document.createElement("span");
-            badge.className = "condition " + value.toLowerCase();
-
-            const dot = document.createElement("span");
-            badge.appendChild(dot);
-            badge.appendChild(document.createTextNode(value));
-            cells[2].replaceChildren(badge);
-        }
-
-        function openequipment(row) {
-            emptyState.hidden = true;
-            form.hidden = false;
-            selectedRow = row;
-
-            const cells = row.querySelectorAll("td");
-            const condition = getCondition(row);
-
-            equipmentId.textContent = cells[0].textContent.trim();
-            equipmentName.textContent = cells[1].textContent.trim();
-            panelCondition.textContent = "Current condition: " + condition;
-            notes.value = row.dataset.notes || "";
-            equipStatus.value = row.dataset.status || "";
-
-            const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
-            if (radio) radio.checked = true;
-
-            rows.forEach(item => item.classList.remove("selected-row"));
-            row.classList.add("selected-row");
-
-            status.textContent = "equipment ID " + cells[0].textContent.trim() + " selected.";
-        }
-
-        rows.forEach(row => {
-            row.querySelector(".edit-button")?.addEventListener("click", () => openequipment(row));
-
-            row.querySelector(".view-button-action")?.addEventListener("click", event => {
-                event.preventDefault();
-                openequipment(row);
-                status.textContent = "Displaying equipment details.";
+            document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
+                button.addEventListener("click", () => hideToast(button.dataset.dismissToast));
             });
-        });
 
-        function getFilteredRows() {
-            const search = searchInput.value.trim().toLowerCase();
-            const selectedCondition = conditionFilter.value.toLowerCase();
+            function getCondition(row) {
+                return row.querySelector(".condition")?.textContent.trim() || "";
+            }
 
-            return rows.filter(row => {
+            function updateCondition(row, value) {
                 const cells = row.querySelectorAll("td");
-                const id = cells[0].textContent.trim().toLowerCase();
-                const name = cells[1].textContent.trim().toLowerCase();
-                const condition = getCondition(row).toLowerCase();
+                const badge = document.createElement("span");
+                badge.className = "condition " + value.toLowerCase();
 
-                return (id.includes(search) || name.includes(search)) &&
-                    (selectedCondition === "all" || condition === selectedCondition);
-            });
-        }
+                const dot = document.createElement("span");
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(value));
+                cells[2].replaceChildren(badge);
+            }
 
-        function renderTable() {
-            const filteredRows = getFilteredRows();
-            const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
-            currentPage = Math.min(currentPage, totalPages);
+            function openequipment(row) {
+                emptyState.hidden = true;
+                form.hidden = false;
+                selectedRow = row;
 
-            rows.forEach(row => row.style.display = "none");
+                const cells = row.querySelectorAll("td");
+                const condition = getCondition(row);
 
-            const start = (currentPage - 1) * rowsPerPage;
-            filteredRows.slice(start, start + rowsPerPage).forEach(row => row.style.display = "");
+                equipmentId.textContent = cells[0].textContent.trim();
+                equipmentName.textContent = cells[1].textContent.trim();
+                panelCondition.textContent = "Current condition: " + condition;
+                notes.value = row.dataset.notes || "";
+                equipStatus.value = row.dataset.status || "";
 
-            noResults.classList.toggle("hidden", filteredRows.length !== 0);
-            pageNumbers.replaceChildren();
+                const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
+                if (radio) radio.checked = true;
 
-            for (let page = 1; page <= totalPages; page++) {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.textContent = page;
-                button.className = "pagination-number";
+                rows.forEach(item => item.classList.remove("selected-row"));
+                row.classList.add("selected-row");
 
-                if (page === currentPage) button.classList.add("active");
+                status.textContent = "equipment ID " + cells[0].textContent.trim() + " selected.";
+            }
 
-                button.addEventListener("click", () => {
-                    currentPage = page;
-                    renderTable();
+            rows.forEach(row => {
+                row.querySelector(".edit-button")?.addEventListener("click", () => openequipment(row));
+
+                row.querySelector(".view-button-action")?.addEventListener("click", event => {
+                    event.preventDefault();
+                    openequipment(row);
+                    status.textContent = "Displaying equipment details.";
                 });
+            });
 
-                pageNumbers.appendChild(button);
+            function getFilteredRows() {
+                const search = searchInput.value.trim().toLowerCase();
+                const selectedCondition = conditionFilter.value.toLowerCase();
+
+                return rows.filter(row => {
+                    const cells = row.querySelectorAll("td");
+                    const id = cells[0].textContent.trim().toLowerCase();
+                    const name = cells[1].textContent.trim().toLowerCase();
+                    const condition = getCondition(row).toLowerCase();
+
+                    return (id.includes(search) || name.includes(search)) &&
+                        (selectedCondition === "all" || condition === selectedCondition);
+                });
             }
 
-            prevButton.disabled = currentPage === 1;
-            nextButton.disabled = currentPage === totalPages || filteredRows.length === 0;
+            function renderTable() {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+                currentPage = Math.min(currentPage, totalPages);
 
-            prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
-            nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
-            prevButton.style.cursor = prevButton.disabled ? "not-allowed" : "pointer";
-            nextButton.style.cursor = nextButton.disabled ? "not-allowed" : "pointer";
-        }
+                rows.forEach(row => row.style.display = "none");
 
-        function closeConfirmModal() {
-            confirmModal.classList.add("hidden");
-            confirmModal.classList.remove("flex");
-        }
+                const start = (currentPage - 1) * rowsPerPage;
+                filteredRows.slice(start, start + rowsPerPage).forEach(row => row.style.display = "");
 
-        form.addEventListener("submit", event => {
-            event.preventDefault();
+                noResults.classList.toggle("hidden", filteredRows.length !== 0);
+                pageNumbers.replaceChildren();
 
-            if (!selectedRow) {
-                showToast("warning", "Please select a equipment first.");
-                return;
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = page;
+                    button.className = "pagination-number";
+
+                    if (page === currentPage) button.classList.add("active");
+
+                    button.addEventListener("click", () => {
+                        currentPage = page;
+                        renderTable();
+                    });
+
+                    pageNumbers.appendChild(button);
+                }
+
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled = currentPage === totalPages || filteredRows.length === 0;
+
+                prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
+                nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
+                prevButton.style.cursor = prevButton.disabled ? "not-allowed" : "pointer";
+                nextButton.style.cursor = nextButton.disabled ? "not-allowed" : "pointer";
             }
 
-            if (!form.querySelector('input[name="condition"]:checked')) {
-                showToast("warning", "Please select a condition before saving.");
-                return;
+            function closeConfirmModal() {
+                confirmModal.classList.add("hidden");
+                confirmModal.classList.remove("flex");
             }
 
-            if (!equipStatus.value) {
-                showToast("warning", "Please select a status before saving.");
-                equipStatus.focus();
-                return;
-            }
+            form.addEventListener("submit", event => {
+                event.preventDefault();
 
-            confirmModal.classList.remove("hidden");
-            confirmModal.classList.add("flex");
-        });
+                if (!selectedRow) {
+                    showToast("warning", "Please select a equipment first.");
+                    return;
+                }
 
-        cancelSave.addEventListener("click", closeConfirmModal);
+                if (!form.querySelector('input[name="condition"]:checked')) {
+                    showToast("warning", "Please select a condition before saving.");
+                    return;
+                }
 
-        confirmSave.addEventListener("click", () => {
-            if (!selectedRow) {
+                if (!equipStatus.value) {
+                    showToast("warning", "Please select a status before saving.");
+                    equipStatus.focus();
+                    return;
+                }
+
+                confirmModal.classList.remove("hidden");
+                confirmModal.classList.add("flex");
+            });
+
+            cancelSave.addEventListener("click", closeConfirmModal);
+
+            confirmSave.addEventListener("click", () => {
+                if (!selectedRow) {
+                    closeConfirmModal();
+                    showToast("danger", "No equipment is selected.");
+                    return;
+                }
+
+                const selectedRadio = form.querySelector('input[name="condition"]:checked');
+
+                if (!selectedRadio || !equipStatus.value) {
+                    closeConfirmModal();
+                    showToast("warning", "Please complete the required fields.");
+                    return;
+                }
+
+                updateCondition(selectedRow, selectedRadio.value);
+                selectedRow.dataset.notes = notes.value;
+                selectedRow.dataset.status = equipStatus.value;
+
+                panelCondition.textContent = "Current condition: " + selectedRadio.value;
+
+                const savedName = equipmentName.textContent;
+
                 closeConfirmModal();
-                showToast("danger", "No equipment is selected.");
-                return;
-            }
-
-            const selectedRadio = form.querySelector('input[name="condition"]:checked');
-
-            if (!selectedRadio || !equipStatus.value) {
-                closeConfirmModal();
-                showToast("warning", "Please complete the required fields.");
-                return;
-            }
-
-            updateCondition(selectedRow, selectedRadio.value);
-            selectedRow.dataset.notes = notes.value;
-            selectedRow.dataset.status = equipStatus.value;
-
-            panelCondition.textContent = "Current condition: " + selectedRadio.value;
-
-            const savedName = equipmentName.textContent;
-
-            closeConfirmModal();
-            status.textContent = "Assessment updated for " + savedName + ".";
-            renderTable();
-
-            showToast("success", "Equipment condition saved successfully.");
-        });
-
-        confirmModal.addEventListener("click", event => {
-            if (event.target === confirmModal) closeConfirmModal();
-        });
-
-        document.addEventListener("keydown", event => {
-            if (event.key === "Escape" && !confirmModal.classList.contains("hidden")) {
-                closeConfirmModal();
-            }
-        });
-
-        searchInput.addEventListener("input", () => {
-            currentPage = 1;
-            renderTable();
-        });
-
-        conditionFilter.addEventListener("change", () => {
-            currentPage = 1;
-            renderTable();
-        });
-
-        prevButton.addEventListener("click", () => {
-            if (currentPage > 1) {
-                currentPage--;
+                status.textContent = "Assessment updated for " + savedName + ".";
                 renderTable();
-            }
-        });
 
-        nextButton.addEventListener("click", () => {
-            const totalPages = Math.ceil(getFilteredRows().length / rowsPerPage);
+                showToast("success", "Equipment condition saved successfully.");
+            });
 
-            if (currentPage < totalPages) {
-                currentPage++;
+            confirmModal.addEventListener("click", event => {
+                if (event.target === confirmModal) closeConfirmModal();
+            });
+
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && !confirmModal.classList.contains("hidden")) {
+                    closeConfirmModal();
+                }
+            });
+
+            searchInput.addEventListener("input", () => {
+                currentPage = 1;
                 renderTable();
-            }
-        });
+            });
 
-        renderTable();
-    });
+            conditionFilter.addEventListener("change", () => {
+                currentPage = 1;
+                renderTable();
+            });
+
+            prevButton.addEventListener("click", () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+
+            nextButton.addEventListener("click", () => {
+                const totalPages = Math.ceil(getFilteredRows().length / rowsPerPage);
+
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            });
+
+            renderTable();
+        });
     </script>
 </body>
+
 </html>

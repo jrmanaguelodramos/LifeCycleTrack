@@ -1,5 +1,11 @@
 <?php
 require_once __DIR__ . '/_app.php';
+$equipmentRows = $pdo->query(
+    'SELECT e.id, e.name, e.location, e.condition, f.location AS floor
+       FROM equipment AS e
+       LEFT JOIN facilities AS f ON f.id = e.facility_id
+      ORDER BY e.id DESC'
+)->fetchAll(PDO::FETCH_ASSOC);
 require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -24,7 +30,7 @@ if (!isset($_SESSION['access_token'])) {
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/equipments_list.css">
     <style>
-       
+
     </style>
 </head>
 
@@ -72,8 +78,9 @@ if (!isset($_SESSION['access_token'])) {
     }
 
     $search = trim((string)($_GET['search'] ?? ''));
-    $filterCondition = (string)($_GET['condition'] ?? '');
-    $assets = fetch_assets($pdo, 'equipment', $search, $filterCondition);
+    $filterCondition = trim((string)($_GET['condition'] ?? ''));
+
+    $equipmentRows = fetch_equipment($pdo, $search, $filterCondition);
     ?>
 
     <?php include 'sidebar.php'; ?>
@@ -105,8 +112,7 @@ if (!isset($_SESSION['access_token'])) {
                             id="equipmentSearch"
                             type="search"
                             class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
-                            placeholder="Search by name or id..."
-                        />
+                            placeholder="Search by name or id..." />
                     </div>
                 </div>
 
@@ -158,68 +164,63 @@ if (!isset($_SESSION['access_token'])) {
                 </thead>
 
                 <tbody>
-                    <tr>
-                        <td>0001</td>
-                        <td>Printer</td>
-                        <td>Main Building</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewequip.php?id=1"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
+                    <?php if (empty($assets)): ?>
+                        <tr>
+                            <td colspan="100%" class="text-center py-6">
+                                No equipment found.
+                            </td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($assets as $asset): ?>
+                            <tr>
+                                <td>
+                                    <?= htmlspecialchars(
+                                        str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </td>
 
-                    <tr>
-                        <td>0002</td>
-                        <td>Airconditioner</td>
-                        <td>Building A</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewequip.php?id=2"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
+                                <td>
+                                    <?= htmlspecialchars(
+                                        (string) ($asset['name'] ?? ''),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </td>
 
-                    <tr>
-                        <td>0003</td>
-                        <td>Generator</td>
-                        <td>Building B</td>
-                        <td>Basement</td>
-                        <td><span class="condition fair"><span></span>Fair</span></td>
-                        <td><a href="viewequip.php?id=3"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
+                                <td>
+                                    <?= htmlspecialchars(
+                                        (string) ($asset['location'] ?? ''),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </td>
+                                <td>
+                                    <?= htmlspecialchars(
+                                        (string) ($asset['floor'] ?? ''),
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>
+                                </td>
 
-                    <tr>
-                        <td>0004</td>
-                        <td>Water Dispenser</td>
-                        <td>Main Building</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewequip.php?id=4"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
+                                <td><span class="condition <?= strtolower((string) ($asset['condition'] ?? 'unknown')) ?>"><span></span>
+                                        <?= htmlspecialchars(
+                                            (string) ($asset['condition'] ?? 'Unknown'),
+                                            ENT_QUOTES,
+                                            'UTF-8'
+                                        ) ?></span>
+                                </td>
 
-                    <tr>
-                        <td>0005</td>
-                        <td>Grass Cutter</td>
-                        <td>Building A</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition poor"><span></span>Poor</span></td>
-                        <td><a href="viewequip.php?id=5"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
-
-                    <tr>
-                        <td>0006</td>
-                        <td>Computer</td>
-                        <td>Building B</td>
-                        <td>2nd Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewequip.php?id=6"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
-
-                    <tr>
-                        <td>0007</td>
-                        <td>Wheel Barrow</td>
-                        <td>Building A</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewequip.php?id=7"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
+                                <td>
+                                    <a href="viewequip.php?id=<?= (int) $asset['id'] ?>">
+                                        <i class="fa-solid fa-eye"></i>
+                                        View
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -232,7 +233,7 @@ if (!isset($_SESSION['access_token'])) {
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const ROWS_PER_PAGE = 10;
             const searchInput = document.getElementById('equipmentSearch');
             const conditionFilter = document.getElementById('conditionFilter');
@@ -258,20 +259,20 @@ if (!isset($_SESSION['access_token'])) {
                 const location = locationFilter.value.toLowerCase();
                 const floor = floorFilter.value.toLowerCase();
 
-                filteredRows = allRows.filter(function (row) {
+                filteredRows = allRows.filter(function(row) {
                     const id = row.cells[0].textContent.trim().toLowerCase();
                     const name = row.cells[1].textContent.trim().toLowerCase();
                     const rowLocation = row.cells[2].textContent.trim().toLowerCase();
                     const rowFloor = row.cells[3].textContent.trim().toLowerCase();
                     const conditionElement = row.querySelector('.condition');
 
-                    const rowCondition = conditionElement
-                        ? Array.from(conditionElement.classList).find(function (className) {
+                    const rowCondition = conditionElement ?
+                        Array.from(conditionElement.classList).find(function(className) {
                             return ['good', 'fair', 'poor'].includes(className);
-                        }) || ''
-                        : '';
+                        }) || '' :
+                        '';
 
-                    const matchesSearch = [id, name, rowLocation, rowFloor].some(function (value) {
+                    const matchesSearch = [id, name, rowLocation, rowFloor].some(function(value) {
                         return value.includes(query);
                     });
 
@@ -292,11 +293,11 @@ if (!isset($_SESSION['access_token'])) {
 
                 const start = (currentPage - 1) * ROWS_PER_PAGE;
 
-                allRows.forEach(function (row) {
+                allRows.forEach(function(row) {
                     row.style.display = 'none';
                 });
 
-                filteredRows.slice(start, start + ROWS_PER_PAGE).forEach(function (row) {
+                filteredRows.slice(start, start + ROWS_PER_PAGE).forEach(function(row) {
                     row.style.display = '';
                 });
 
@@ -305,7 +306,7 @@ if (!isset($_SESSION['access_token'])) {
             }
 
             function renderPagination(totalPages) {
-                pagination.querySelectorAll('.pagination-number').forEach(function (button) {
+                pagination.querySelectorAll('.pagination-number').forEach(function(button) {
                     button.remove();
                 });
 
@@ -316,7 +317,7 @@ if (!isset($_SESSION['access_token'])) {
                     button.textContent = i;
                     button.setAttribute('aria-current', i === currentPage ? 'page' : 'false');
 
-                    button.addEventListener('click', function () {
+                    button.addEventListener('click', function() {
                         currentPage = i;
                         render();
                     });
@@ -333,14 +334,14 @@ if (!isset($_SESSION['access_token'])) {
                 nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
             }
 
-            prevBtn.addEventListener('click', function () {
+            prevBtn.addEventListener('click', function() {
                 if (currentPage > 1) {
                     currentPage--;
                     render();
                 }
             });
 
-            nextBtn.addEventListener('click', function () {
+            nextBtn.addEventListener('click', function() {
                 const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
 
                 if (currentPage < totalPages) {
@@ -354,7 +355,7 @@ if (!isset($_SESSION['access_token'])) {
             locationFilter.addEventListener('change', applyFilters);
             floorFilter.addEventListener('change', applyFilters);
 
-            clearFilters.addEventListener('click', function () {
+            clearFilters.addEventListener('click', function() {
                 searchInput.value = '';
                 locationFilter.value = 'all';
                 floorFilter.value = 'all';
@@ -366,4 +367,5 @@ if (!isset($_SESSION['access_token'])) {
         });
     </script>
 </body>
+
 </html>

@@ -1,6 +1,13 @@
-
 <?php
 require_once __DIR__ . '/_app.php';
+$search = trim((string)($_GET['search'] ?? ''));
+$filterCondition = trim((string)($_GET['condition'] ?? ''));
+
+$conditionAssets = facility_condition(
+    $pdo,
+    $search,
+    $filterCondition
+);
 require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -15,6 +22,7 @@ if (!isset($_SESSION['access_token'])) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -73,8 +81,7 @@ if (!isset($_SESSION['access_token'])) {
                                 id="searchInput"
                                 type="text"
                                 class="w-full rounded-md border border-slate-200 bg-transparent py-2 pl-10 pr-3 text-sm text-slate-700 shadow-sm placeholder:text-slate-400 focus:border-[#155B92] focus:outline-none"
-                                placeholder="Search by name or ID..."
-                            >
+                                placeholder="Search by name or ID...">
                         </div>
                     </div>
 
@@ -85,8 +92,7 @@ if (!isset($_SESSION['access_token'])) {
 
                         <select
                             id="conditionFilter"
-                            class="h-9 w-28 cursor-pointer rounded-md border border-slate-300 bg-white px-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none"
-                        >
+                            class="h-9 w-28 cursor-pointer rounded-md border border-slate-300 bg-white px-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                             <option value="all">All</option>
                             <option value="good">Good</option>
                             <option value="fair">Fair</option>
@@ -108,103 +114,37 @@ if (!isset($_SESSION['access_token'])) {
                         </thead>
 
                         <tbody>
-                            <tr data-notes="" data-status="">
-                                <td>0001</td>
-                                <td>Reception Hall</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
+                            <?php foreach ($conditionAssets as $asset): ?>
+                                <tr
+                                    data-asset-id="<?= (int) $asset['id'] ?>"
+                                    data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
+                                    data-status="">
+                                    <td><?= str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
 
-                            <tr data-notes="" data-status="">
-                                <td>0002</td>
-                                <td>Gymnasium</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
+                                    <td><?= e($asset['name']) ?></td>
 
-                            <tr data-notes="" data-status="">
-                                <td>0003</td>
-                                <td>Secretary's Office</td>
-                                <td><span class="condition fair"><span></span>Fair</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
+                                    <td>
+                                        <?= condition_badge((string) $asset['condition']) ?>
+                                    </td>
 
-                            <tr data-notes="" data-status="">
-                                <td>0004</td>
-                                <td>Cafeteria</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="view-button edit-button"
+                                            data-id="<?= (int) $asset['id'] ?>">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                            Edit
+                                        </button>
 
-                            <tr data-notes="" data-status="">
-                                <td>0005</td>
-                                <td>Covered Court</td>
-                                <td><span class="condition poor"><span></span>Poor</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
-
-                            <tr data-notes="" data-status="">
-                                <td>0006</td>
-                                <td>Admin Office</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
-
-                            <tr data-notes="" data-status="">
-                                <td>0007</td>
-                                <td>Parking Area</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button">
-                                        <i class="fa-solid fa-pen-to-square"></i> Edit
-                                    </button>
-                                    <a href="viewfacility.php" class="view-button view-button-action">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
-                                </td>
-                            </tr>
+                                        <a
+                                            href="viewfacility.php?id=<?= (int) $asset['id'] ?>"
+                                            class="view-button view-button-action">
+                                            <i class="fa-solid fa-eye"></i>
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
 
@@ -249,8 +189,7 @@ if (!isset($_SESSION['access_token'])) {
                                     id="image"
                                     src="../img/logo.png"
                                     alt="Facility image"
-                                    class="block h-40 w-full object-contain"
-                                >
+                                    class="block h-40 w-full object-contain">
                             </div>
 
                             <div class="w-1/2 min-w-0">
@@ -271,8 +210,7 @@ if (!isset($_SESSION['access_token'])) {
                                         name="condition"
                                         value="Good"
                                         checked
-                                        class="h-5 w-5 cursor-pointer accent-green-500"
-                                    >
+                                        class="h-5 w-5 cursor-pointer accent-green-500">
                                     <span>Good</span>
                                 </label>
 
@@ -281,8 +219,7 @@ if (!isset($_SESSION['access_token'])) {
                                         type="radio"
                                         name="condition"
                                         value="Fair"
-                                        class="h-5 w-5 cursor-pointer accent-orange-500"
-                                    >
+                                        class="h-5 w-5 cursor-pointer accent-orange-500">
                                     <span>Fair</span>
                                 </label>
 
@@ -291,8 +228,7 @@ if (!isset($_SESSION['access_token'])) {
                                         type="radio"
                                         name="condition"
                                         value="Poor"
-                                        class="h-5 w-5 cursor-pointer accent-red-500"
-                                    >
+                                        class="h-5 w-5 cursor-pointer accent-red-500">
                                     <span>Poor</span>
                                 </label>
                             </div>
@@ -307,8 +243,7 @@ if (!isset($_SESSION['access_token'])) {
                                 id="equipStatus"
                                 name="status"
                                 required
-                                class="w-full cursor-pointer rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            >
+                                class="w-full cursor-pointer rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
                                 <option value="">Select status</option>
                                 <option value="Serviceable (functioning)">Serviceable (functioning)</option>
 
@@ -334,14 +269,12 @@ if (!isset($_SESSION['access_token'])) {
                                 name="notes"
                                 rows="5"
                                 placeholder="Enter notes or remarks..."
-                                class="w-full resize-none rounded-xl border border-gray-300 p-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            ></textarea>
+                                class="w-full resize-none rounded-xl border border-gray-300 p-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"></textarea>
                         </div>
 
                         <button
                             type="submit"
-                            class="mt-auto flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#155B92] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#104a78]"
-                        >
+                            class="mt-auto flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#155B92] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#104a78]">
                             <i class="fa-solid fa-floppy-disk"></i>
                             <span>Save Assessment</span>
                         </button>
@@ -368,16 +301,14 @@ if (!isset($_SESSION['access_token'])) {
                 <button
                     type="button"
                     id="cancelfacilityConfirm"
-                    class="rounded-lg border border-slate-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
+                    class="rounded-lg border border-slate-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-100">
                     Cancel
                 </button>
 
                 <button
                     type="button"
                     id="confirmfacilitySave"
-                    class="cursor-pointer rounded-lg bg-[#155B92] px-5 py-2 text-sm text-white hover:bg-[#10456f]"
-                >
+                    class="cursor-pointer rounded-lg bg-[#155B92] px-5 py-2 text-sm text-white hover:bg-[#10456f]">
                     Yes, Save
                 </button>
             </div>
@@ -389,8 +320,7 @@ if (!isset($_SESSION['access_token'])) {
         id="toast-warning"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-red-200 bg-white p-4 text-gray-700 shadow-lg"
         role="alert"
-        aria-live="assertive"
-    >
+        aria-live="assertive">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
             <i class="fa-solid fa-circle-exclamation text-lg"></i>
         </div>
@@ -403,8 +333,7 @@ if (!isset($_SESSION['access_token'])) {
             type="button"
             data-dismiss-toast="warning"
             class="ml-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close"
-        >
+            aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -414,8 +343,7 @@ if (!isset($_SESSION['access_token'])) {
         id="toast-success"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-green-200 bg-white p-4 text-gray-700 shadow-lg"
         role="alert"
-        aria-live="polite"
-    >
+        aria-live="polite">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600">
             <i class="fa-solid fa-circle-check text-lg"></i>
         </div>
@@ -428,8 +356,7 @@ if (!isset($_SESSION['access_token'])) {
             type="button"
             data-dismiss-toast="success"
             class="ml-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close"
-        >
+            aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -439,8 +366,7 @@ if (!isset($_SESSION['access_token'])) {
         id="toast-danger"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-red-200 bg-white p-4 text-gray-700 shadow-lg"
         role="alert"
-        aria-live="assertive"
-    >
+        aria-live="assertive">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
             <i class="fa-solid fa-circle-xmark text-lg"></i>
         </div>
@@ -453,355 +379,355 @@ if (!isset($_SESSION['access_token'])) {
             type="button"
             data-dismiss-toast="danger"
             class="ml-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close"
-        >
+            aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const table = document.querySelector(".condition-table");
-        const searchInput = document.getElementById("searchInput");
-        const conditionFilter = document.getElementById("conditionFilter");
-        const form = document.getElementById("assessmentForm");
-        const emptyState = document.getElementById("emptyState");
-        const facilityId = document.getElementById("id");
-        const facilityName = document.getElementById("name");
-        const panelCondition = document.getElementById("panelCondition");
-        const notes = document.getElementById("notes");
-        const equipStatus = document.getElementById("equipStatus");
-        const noResults = document.getElementById("noResults");
-        const status = document.getElementById("status");
-        const prevButton = document.getElementById("prevPage");
-        const nextButton = document.getElementById("nextPage");
-        const pageNumbers = document.getElementById("pageNumbers");
-        const confirmModal = document.getElementById("confirmModal");
-        const cancelSave = document.getElementById("cancelfacilityConfirm");
-        const confirmSave = document.getElementById("confirmfacilitySave");
-        const rows = Array.from(table.querySelectorAll("tbody tr"));
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.querySelector(".condition-table");
+            const searchInput = document.getElementById("searchInput");
+            const conditionFilter = document.getElementById("conditionFilter");
+            const form = document.getElementById("assessmentForm");
+            const emptyState = document.getElementById("emptyState");
+            const facilityId = document.getElementById("id");
+            const facilityName = document.getElementById("name");
+            const panelCondition = document.getElementById("panelCondition");
+            const notes = document.getElementById("notes");
+            const equipStatus = document.getElementById("equipStatus");
+            const noResults = document.getElementById("noResults");
+            const status = document.getElementById("status");
+            const prevButton = document.getElementById("prevPage");
+            const nextButton = document.getElementById("nextPage");
+            const pageNumbers = document.getElementById("pageNumbers");
+            const confirmModal = document.getElementById("confirmModal");
+            const cancelSave = document.getElementById("cancelfacilityConfirm");
+            const confirmSave = document.getElementById("confirmfacilitySave");
+            const rows = Array.from(table.querySelectorAll("tbody tr"));
 
-        const rowsPerPage = 10;
-        const toastTimers = {};
+            const rowsPerPage = 10;
+            const toastTimers = {};
 
-        let currentPage = 1;
-        let selectedRow = null;
+            let currentPage = 1;
+            let selectedRow = null;
 
-        // Display a toast notification.
-        function showToast(type, message) {
-            const toast = document.getElementById("toast-" + type);
-            const messageElement = document.getElementById("toast-" + type + "-message");
+            // Display a toast notification.
+            function showToast(type, message) {
+                const toast = document.getElementById("toast-" + type);
+                const messageElement = document.getElementById("toast-" + type + "-message");
 
-            if (!toast || !messageElement) {
-                console.error("Toast element not found:", type);
-                return;
-            }
-
-            clearTimeout(toastTimers[type]);
-
-            messageElement.textContent = message;
-
-            // Close other visible toast notifications.
-            document.querySelectorAll(".toast-notification.show").forEach(item => {
-                if (item !== toast) {
-                    item.classList.remove("show");
+                if (!toast || !messageElement) {
+                    console.error("Toast element not found:", type);
+                    return;
                 }
-            });
 
-            // Display the selected toast.
-            toast.classList.add("show");
+                clearTimeout(toastTimers[type]);
 
-            toastTimers[type] = setTimeout(() => {
-                hideToast(type);
-            }, 3000);
-        }
+                messageElement.textContent = message;
 
-        // Hide a toast notification.
-        function hideToast(type) {
-            const toast = document.getElementById("toast-" + type);
-
-            if (!toast) return;
-
-            clearTimeout(toastTimers[type]);
-            toast.classList.remove("show");
-        }
-
-        // Close toast when the X button is clicked.
-        document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
-            button.addEventListener("click", () => {
-                hideToast(button.dataset.dismissToast);
-            });
-        });
-
-        // Get the current condition from a table row.
-        function getCondition(row) {
-            return row.querySelector(".condition")?.textContent.trim() || "";
-        }
-
-        // Update the condition badge in the table.
-        function updateCondition(row, value) {
-            const cells = row.querySelectorAll("td");
-            const badge = document.createElement("span");
-
-            badge.className = "condition " + value.toLowerCase();
-
-            const dot = document.createElement("span");
-
-            badge.appendChild(dot);
-            badge.appendChild(document.createTextNode(value));
-
-            cells[2].replaceChildren(badge);
-        }
-
-        // Open a facility in the assessment panel.
-        function openFacility(row) {
-            emptyState.hidden = true;
-            form.hidden = false;
-
-            selectedRow = row;
-
-            const cells = row.querySelectorAll("td");
-            const condition = getCondition(row);
-
-            facilityId.textContent = cells[0].textContent.trim();
-            facilityName.textContent = cells[1].textContent.trim();
-            panelCondition.textContent = "Current condition: " + condition;
-
-            notes.value = row.dataset.notes || "";
-            equipStatus.value = row.dataset.status || "";
-
-            const radio = form.querySelector(
-                'input[name="condition"][value="' + condition + '"]'
-            );
-
-            if (radio) {
-                radio.checked = true;
-            }
-
-            rows.forEach(item => item.classList.remove("selected-row"));
-            row.classList.add("selected-row");
-
-            status.textContent = "Facility ID " +
-                cells[0].textContent.trim() + " selected.";
-        }
-
-        // Edit and View actions.
-        rows.forEach(row => {
-            row.querySelector(".edit-button")?.addEventListener("click", () => {
-                openFacility(row);
-            });
-
-            row.querySelector(".view-button-action")?.addEventListener("click", event => {
-                event.preventDefault();
-                openFacility(row);
-                status.textContent = "Displaying facility details.";
-            });
-        });
-
-        // Filter rows using the search input and condition dropdown.
-        function getFilteredRows() {
-            const search = searchInput.value.trim().toLowerCase();
-            const selectedCondition = conditionFilter.value.toLowerCase();
-
-            return rows.filter(row => {
-                const cells = row.querySelectorAll("td");
-
-                const id = cells[0].textContent.trim().toLowerCase();
-                const name = cells[1].textContent.trim().toLowerCase();
-                const condition = getCondition(row).toLowerCase();
-
-                return (
-                    (id.includes(search) || name.includes(search)) &&
-                    (
-                        selectedCondition === "all" ||
-                        condition === selectedCondition
-                    )
-                );
-            });
-        }
-
-        // Render the table and pagination.
-        function renderTable() {
-            const filteredRows = getFilteredRows();
-            const totalPages = Math.max(
-                1,
-                Math.ceil(filteredRows.length / rowsPerPage)
-            );
-
-            currentPage = Math.min(currentPage, totalPages);
-
-            rows.forEach(row => {
-                row.style.display = "none";
-            });
-
-            const start = (currentPage - 1) * rowsPerPage;
-
-            filteredRows
-                .slice(start, start + rowsPerPage)
-                .forEach(row => {
-                    row.style.display = "";
+                // Close other visible toast notifications.
+                document.querySelectorAll(".toast-notification.show").forEach(item => {
+                    if (item !== toast) {
+                        item.classList.remove("show");
+                    }
                 });
 
-            noResults.classList.toggle("hidden", filteredRows.length !== 0);
+                // Display the selected toast.
+                toast.classList.add("show");
 
-            pageNumbers.replaceChildren();
+                toastTimers[type] = setTimeout(() => {
+                    hideToast(type);
+                }, 3000);
+            }
 
-            for (let page = 1; page <= totalPages; page++) {
-                const button = document.createElement("button");
+            // Hide a toast notification.
+            function hideToast(type) {
+                const toast = document.getElementById("toast-" + type);
 
-                button.type = "button";
-                button.textContent = page;
-                button.className = "pagination-number";
+                if (!toast) return;
 
-                if (page === currentPage) {
-                    button.classList.add("active");
-                }
+                clearTimeout(toastTimers[type]);
+                toast.classList.remove("show");
+            }
 
+            // Close toast when the X button is clicked.
+            document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
                 button.addEventListener("click", () => {
-                    currentPage = page;
-                    renderTable();
+                    hideToast(button.dataset.dismissToast);
+                });
+            });
+
+            // Get the current condition from a table row.
+            function getCondition(row) {
+                return row.querySelector(".condition")?.textContent.trim() || "";
+            }
+
+            // Update the condition badge in the table.
+            function updateCondition(row, value) {
+                const cells = row.querySelectorAll("td");
+                const badge = document.createElement("span");
+
+                badge.className = "condition " + value.toLowerCase();
+
+                const dot = document.createElement("span");
+
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(value));
+
+                cells[2].replaceChildren(badge);
+            }
+
+            // Open a facility in the assessment panel.
+            function openFacility(row) {
+                emptyState.hidden = true;
+                form.hidden = false;
+
+                selectedRow = row;
+
+                const cells = row.querySelectorAll("td");
+                const condition = getCondition(row);
+
+                facilityId.textContent = cells[0].textContent.trim();
+                facilityName.textContent = cells[1].textContent.trim();
+                panelCondition.textContent = "Current condition: " + condition;
+
+                notes.value = row.dataset.notes || "";
+                equipStatus.value = row.dataset.status || "";
+
+                const radio = form.querySelector(
+                    'input[name="condition"][value="' + condition + '"]'
+                );
+
+                if (radio) {
+                    radio.checked = true;
+                }
+
+                rows.forEach(item => item.classList.remove("selected-row"));
+                row.classList.add("selected-row");
+
+                status.textContent = "Facility ID " +
+                    cells[0].textContent.trim() + " selected.";
+            }
+
+            // Edit and View actions.
+            rows.forEach(row => {
+                row.querySelector(".edit-button")?.addEventListener("click", () => {
+                    openFacility(row);
                 });
 
-                pageNumbers.appendChild(button);
+                row.querySelector(".view-button-action")?.addEventListener("click", event => {
+                    event.preventDefault();
+                    openFacility(row);
+                    status.textContent = "Displaying facility details.";
+                });
+            });
+
+            // Filter rows using the search input and condition dropdown.
+            function getFilteredRows() {
+                const search = searchInput.value.trim().toLowerCase();
+                const selectedCondition = conditionFilter.value.toLowerCase();
+
+                return rows.filter(row => {
+                    const cells = row.querySelectorAll("td");
+
+                    const id = cells[0].textContent.trim().toLowerCase();
+                    const name = cells[1].textContent.trim().toLowerCase();
+                    const condition = getCondition(row).toLowerCase();
+
+                    return (
+                        (id.includes(search) || name.includes(search)) &&
+                        (
+                            selectedCondition === "all" ||
+                            condition === selectedCondition
+                        )
+                    );
+                });
             }
 
-            prevButton.disabled = currentPage === 1;
-            nextButton.disabled =
-                currentPage === totalPages || filteredRows.length === 0;
+            // Render the table and pagination.
+            function renderTable() {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(
+                    1,
+                    Math.ceil(filteredRows.length / rowsPerPage)
+                );
 
-            prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
-            nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
+                currentPage = Math.min(currentPage, totalPages);
 
-            prevButton.style.cursor = prevButton.disabled
-                ? "not-allowed"
-                : "pointer";
+                rows.forEach(row => {
+                    row.style.display = "none";
+                });
 
-            nextButton.style.cursor = nextButton.disabled
-                ? "not-allowed"
-                : "pointer";
-        }
+                const start = (currentPage - 1) * rowsPerPage;
 
-        // Close the save confirmation modal.
-        function closeConfirmModal() {
-            confirmModal.classList.add("hidden");
-            confirmModal.classList.remove("flex");
-        }
+                filteredRows
+                    .slice(start, start + rowsPerPage)
+                    .forEach(row => {
+                        row.style.display = "";
+                    });
 
-        // Validate the form before showing the confirmation modal.
-        form.addEventListener("submit", event => {
-            event.preventDefault();
+                noResults.classList.toggle("hidden", filteredRows.length !== 0);
 
-            if (!selectedRow) {
-                showToast("warning", "Please select a facility first.");
-                return;
+                pageNumbers.replaceChildren();
+
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement("button");
+
+                    button.type = "button";
+                    button.textContent = page;
+                    button.className = "pagination-number";
+
+                    if (page === currentPage) {
+                        button.classList.add("active");
+                    }
+
+                    button.addEventListener("click", () => {
+                        currentPage = page;
+                        renderTable();
+                    });
+
+                    pageNumbers.appendChild(button);
+                }
+
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled =
+                    currentPage === totalPages || filteredRows.length === 0;
+
+                prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
+                nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
+
+                prevButton.style.cursor = prevButton.disabled ?
+                    "not-allowed" :
+                    "pointer";
+
+                nextButton.style.cursor = nextButton.disabled ?
+                    "not-allowed" :
+                    "pointer";
             }
 
-            if (!form.querySelector('input[name="condition"]:checked')) {
-                showToast("warning", "Please select a condition before saving.");
-                return;
+            // Close the save confirmation modal.
+            function closeConfirmModal() {
+                confirmModal.classList.add("hidden");
+                confirmModal.classList.remove("flex");
             }
 
-            if (!equipStatus.value) {
-                showToast("warning", "Please select a status before saving.");
-                equipStatus.focus();
-                return;
-            }
+            // Validate the form before showing the confirmation modal.
+            form.addEventListener("submit", event => {
+                event.preventDefault();
 
-            confirmModal.classList.remove("hidden");
-            confirmModal.classList.add("flex");
-        });
+                if (!selectedRow) {
+                    showToast("warning", "Please select a facility first.");
+                    return;
+                }
 
-        cancelSave.addEventListener("click", closeConfirmModal);
+                if (!form.querySelector('input[name="condition"]:checked')) {
+                    showToast("warning", "Please select a condition before saving.");
+                    return;
+                }
 
-        // Save the assessment to the current table row.
-        confirmSave.addEventListener("click", () => {
-            if (!selectedRow) {
+                if (!equipStatus.value) {
+                    showToast("warning", "Please select a status before saving.");
+                    equipStatus.focus();
+                    return;
+                }
+
+                confirmModal.classList.remove("hidden");
+                confirmModal.classList.add("flex");
+            });
+
+            cancelSave.addEventListener("click", closeConfirmModal);
+
+            // Save the assessment to the current table row.
+            confirmSave.addEventListener("click", () => {
+                if (!selectedRow) {
+                    closeConfirmModal();
+                    showToast("danger", "No facility is selected.");
+                    return;
+                }
+
+                const selectedRadio = form.querySelector(
+                    'input[name="condition"]:checked'
+                );
+
+                if (!selectedRadio || !equipStatus.value) {
+                    closeConfirmModal();
+                    showToast("warning", "Please complete the required fields.");
+                    return;
+                }
+
+                updateCondition(selectedRow, selectedRadio.value);
+
+                selectedRow.dataset.notes = notes.value;
+                selectedRow.dataset.status = equipStatus.value;
+
+                panelCondition.textContent =
+                    "Current condition: " + selectedRadio.value;
+
+                const savedName = facilityName.textContent;
+
                 closeConfirmModal();
-                showToast("danger", "No facility is selected.");
-                return;
-            }
 
-            const selectedRadio = form.querySelector(
-                'input[name="condition"]:checked'
-            );
+                status.textContent = "Assessment updated for " + savedName + ".";
 
-            if (!selectedRadio || !equipStatus.value) {
-                closeConfirmModal();
-                showToast("warning", "Please complete the required fields.");
-                return;
-            }
-
-            updateCondition(selectedRow, selectedRadio.value);
-
-            selectedRow.dataset.notes = notes.value;
-            selectedRow.dataset.status = equipStatus.value;
-
-            panelCondition.textContent =
-                "Current condition: " + selectedRadio.value;
-
-            const savedName = facilityName.textContent;
-
-            closeConfirmModal();
-
-            status.textContent = "Assessment updated for " + savedName + ".";
-
-            renderTable();
-
-            showToast("success", "Facility condition saved successfully.");
-        });
-
-        // Close the modal when clicking outside it.
-        confirmModal.addEventListener("click", event => {
-            if (event.target === confirmModal) {
-                closeConfirmModal();
-            }
-        });
-
-        // Close the modal using Escape.
-        document.addEventListener("keydown", event => {
-            if (
-                event.key === "Escape" &&
-                !confirmModal.classList.contains("hidden")
-            ) {
-                closeConfirmModal();
-            }
-        });
-
-        // Search.
-        searchInput.addEventListener("input", () => {
-            currentPage = 1;
-            renderTable();
-        });
-
-        // Condition filter.
-        conditionFilter.addEventListener("change", () => {
-            currentPage = 1;
-            renderTable();
-        });
-
-        // Previous page.
-        prevButton.addEventListener("click", () => {
-            if (currentPage > 1) {
-                currentPage--;
                 renderTable();
-            }
-        });
 
-        // Next page.
-        nextButton.addEventListener("click", () => {
-            const totalPages = Math.ceil(
-                getFilteredRows().length / rowsPerPage
-            );
+                showToast("success", "Facility condition saved successfully.");
+            });
 
-            if (currentPage < totalPages) {
-                currentPage++;
+            // Close the modal when clicking outside it.
+            confirmModal.addEventListener("click", event => {
+                if (event.target === confirmModal) {
+                    closeConfirmModal();
+                }
+            });
+
+            // Close the modal using Escape.
+            document.addEventListener("keydown", event => {
+                if (
+                    event.key === "Escape" &&
+                    !confirmModal.classList.contains("hidden")
+                ) {
+                    closeConfirmModal();
+                }
+            });
+
+            // Search.
+            searchInput.addEventListener("input", () => {
+                currentPage = 1;
                 renderTable();
-            }
-        });
+            });
 
-        // Initial table rendering.
-        renderTable();
-    });
+            // Condition filter.
+            conditionFilter.addEventListener("change", () => {
+                currentPage = 1;
+                renderTable();
+            });
+
+            // Previous page.
+            prevButton.addEventListener("click", () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+
+            // Next page.
+            nextButton.addEventListener("click", () => {
+                const totalPages = Math.ceil(
+                    getFilteredRows().length / rowsPerPage
+                );
+
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            });
+
+            // Initial table rendering.
+            renderTable();
+        });
     </script>
 </body>
+
 </html>

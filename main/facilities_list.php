@@ -1,5 +1,10 @@
 <?php
 require_once __DIR__ . '/_app.php';
+$facilities = $pdo->query(
+    'SELECT id, name, location, condition
+       FROM facilities
+      ORDER BY id DESC'
+)->fetchAll(PDO::FETCH_ASSOC);
 require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -24,7 +29,7 @@ if (!isset($_SESSION['access_token'])) {
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/facilities_list.css">
     <style>
-       
+
     </style>
 </head>
 
@@ -62,8 +67,13 @@ if (!isset($_SESSION['access_token'])) {
     }
 
     $search = trim((string)($_GET['search'] ?? ''));
-    $filterCondition = (string)($_GET['condition'] ?? '');
-    $assets = fetch_assets($pdo, 'facility', $search, $filterCondition);
+    $filterCondition = trim((string)($_GET['condition'] ?? ''));
+
+    $assets = facilities_list(
+        $pdo,
+        $search,
+        $filterCondition
+    );
     ?>
 
     <?php include 'sidebar.php'; ?>
@@ -96,8 +106,7 @@ if (!isset($_SESSION['access_token'])) {
                         id="facilitySearch"
                         type="text"
                         class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
-                        placeholder="Search by name or id..."
-                    />
+                        placeholder="Search by name or id..." />
                 </div>
             </div>
 
@@ -151,118 +160,30 @@ if (!isset($_SESSION['access_token'])) {
                 </thead>
 
                 <tbody>
-                    <!-- sample data lang naman to -->
-                    <tr data-floor="ground floor">
-                        <td>0001</td>
-                        <td>Reception Hall</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><a href="viewfacility.php"><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></a></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0002</td>
-                        <td>DayCare</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="1st floor">
-                        <td>0003</td>
-                        <td>Parking</td>
-                        <td>1st Floor</td>
-                        <td><span class="condition fair"><span></span>Fair</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="1st floor">
-                        <td>0004</td>
-                        <td>Health Office</td>
-                        <td>1st Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0005</td>
-                        <td>Comfort Room</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition poor"><span></span>Poor</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="2nd floor">
-                        <td>0006</td>
-                        <td>Captain’s Office</td>
-                        <td>2nd Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0007</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0008</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0009</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0010</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0011</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0012</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0013</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
-
-                    <tr data-floor="ground floor">
-                        <td>0014</td>
-                        <td>Lobby</td>
-                        <td>Ground Floor</td>
-                        <td><span class="condition good"><span></span>Good</span></td>
-                        <td><button class="view-button"><i class="fa-solid fa-eye"></i> View</button></td>
-                    </tr>
+                    <?php if (!$facilities): ?>
+                        <tr>
+                            <td colspan="5">No facilities found.</td>
+                        </tr>
+                    <?php else: ?>
+                        <?php foreach ($facilities as $facility): ?>
+                            <?php
+                            $condition = (string)($facility['condition'] ?? 'Unknown');
+                            $floor = (string)($facility['location'] ?? '');
+                            ?>
+                            <tr data-floor="<?= htmlspecialchars(strtolower($floor), ENT_QUOTES, 'UTF-8') ?>">
+                                <td><?= (int)$facility['id'] ?></td>
+                                <td><?= htmlspecialchars($facility['name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= htmlspecialchars($floor, ENT_QUOTES, 'UTF-8') ?></td>
+                                <td><?= condition_badge($condition) ?></td>
+                                <td>
+                                    <a href="viewfacility.php?id=<?= (int)$facility['id'] ?>"
+                                        class="view-button">
+                                        <i class="fa-solid fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -276,7 +197,7 @@ if (!isset($_SESSION['access_token'])) {
     </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', function() {
             const ROWS_PER_PAGE = 10;
             const searchInput = document.getElementById('facilitySearch');
             const conditionFilter = document.getElementById('conditionFilter');
@@ -299,7 +220,7 @@ if (!isset($_SESSION['access_token'])) {
                 const condition = conditionFilter.value;
                 const floor = floorFilter.value;
 
-                filteredRows = allRows.filter(function (row) {
+                filteredRows = allRows.filter(function(row) {
                     const id = row.cells[0].textContent.trim().toLowerCase();
                     const name = row.cells[1].textContent.trim().toLowerCase();
                     const rowFloor = (row.dataset.floor || row.cells[2].textContent).trim().toLowerCase();
@@ -323,11 +244,11 @@ if (!isset($_SESSION['access_token'])) {
 
                 const start = (currentPage - 1) * ROWS_PER_PAGE;
 
-                allRows.forEach(function (row) {
+                allRows.forEach(function(row) {
                     row.style.display = 'none';
                 });
 
-                filteredRows.slice(start, start + ROWS_PER_PAGE).forEach(function (row) {
+                filteredRows.slice(start, start + ROWS_PER_PAGE).forEach(function(row) {
                     row.style.display = '';
                 });
 
@@ -336,7 +257,7 @@ if (!isset($_SESSION['access_token'])) {
             }
 
             function renderPagination(totalPages) {
-                pagination.querySelectorAll('.pagination-number').forEach(function (button) {
+                pagination.querySelectorAll('.pagination-number').forEach(function(button) {
                     button.remove();
                 });
 
@@ -345,7 +266,7 @@ if (!isset($_SESSION['access_token'])) {
                     button.className = 'pagination-number' + (i === currentPage ? ' active' : '');
                     button.textContent = i;
 
-                    button.addEventListener('click', function () {
+                    button.addEventListener('click', function() {
                         currentPage = i;
                         render();
                     });
@@ -361,14 +282,14 @@ if (!isset($_SESSION['access_token'])) {
                 nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : '';
             }
 
-            prevBtn.addEventListener('click', function () {
+            prevBtn.addEventListener('click', function() {
                 if (currentPage > 1) {
                     currentPage--;
                     render();
                 }
             });
 
-            nextBtn.addEventListener('click', function () {
+            nextBtn.addEventListener('click', function() {
                 const totalPages = Math.max(1, Math.ceil(filteredRows.length / ROWS_PER_PAGE));
 
                 if (currentPage < totalPages) {
@@ -381,7 +302,7 @@ if (!isset($_SESSION['access_token'])) {
             conditionFilter.addEventListener('change', applyFilters);
             floorFilter.addEventListener('change', applyFilters);
 
-            clearFilters.addEventListener('click', function () {
+            clearFilters.addEventListener('click', function() {
                 searchInput.value = '';
                 floorFilter.value = 'all';
                 conditionFilter.value = 'all';
