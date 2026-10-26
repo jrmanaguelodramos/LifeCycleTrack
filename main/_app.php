@@ -477,9 +477,24 @@ function fetch_condition_assets(
     string $search = '',
     string $condition = ''
 ): array {
-    if (!in_array($type, ['facility', 'equipment'], true)) {
-        throw new InvalidArgumentException('Invalid asset type.');
+    $entities = [
+        'facility' => [
+            'table' => 'facilities',
+            'history' => 'facility_condition_assessments',
+            'foreign_key' => 'facility_id',
+        ],
+        'equipment' => [
+            'table' => 'equipment',
+            'history' => 'equipment_condition_assessments',
+            'foreign_key' => 'equipment_id',
+        ],
+    ];
+
+    if (!isset($entities[$type])) {
+        throw new InvalidArgumentException('Invalid entity type.');
     }
+
+    $entity = $entities[$type];
 
     $sql = "
         SELECT
@@ -487,38 +502,39 @@ function fetch_condition_assets(
             a.name,
             a.location,
             a.condition,
+            COALESCE(ca.status, a.status) AS status,
             a.remarks,
             a.image_url,
             a.updated_at,
             ca.notes AS assessment_notes,
             ca.assessed_by,
             ca.assessed_at
-        FROM assets AS a
+        FROM {$entity['table']} AS a
         LEFT JOIN LATERAL (
-            SELECT
-                notes,
-                assessed_by,
-                assessed_at
-            FROM condition_assessments
-            WHERE asset_id = a.id
+            SELECT status, notes, assessed_by, assessed_at
+            FROM {$entity['history']}
+            WHERE {$entity['foreign_key']} = a.id
             ORDER BY assessed_at DESC, id DESC
             LIMIT 1
         ) AS ca ON TRUE
-        WHERE a.asset_type = :type
+        WHERE 1 = 1
     ";
 
-    $params = [':type' => $type];
+    $params = [];
 
     if ($search !== '') {
         $sql .= "
             AND (
-                CAST(a.id AS TEXT) ILIKE :search
-                OR a.name ILIKE :search
-                OR a.location ILIKE :search
+                CAST(a.id AS TEXT) ILIKE :search_id
+                OR a.name ILIKE :search_name
+                OR a.location ILIKE :search_location
             )
         ";
 
-        $params[':search'] = '%' . $search . '%';
+        $pattern = '%' . $search . '%';
+        $params[':search_id'] = $pattern;
+        $params[':search_name'] = $pattern;
+        $params[':search_location'] = $pattern;
     }
 
     if ($condition !== '') {
