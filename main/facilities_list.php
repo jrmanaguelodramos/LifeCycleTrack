@@ -1,12 +1,8 @@
 <?php
 require_once __DIR__ . '/_app.php';
-$facilities = $pdo->query(
-    'SELECT id, name, location, condition
-       FROM facilities
-      ORDER BY id DESC'
-)->fetchAll(PDO::FETCH_ASSOC);
-require_login();
 
+require_login();
+// $userId = (int) $_SESSION['user_id'];
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -52,7 +48,7 @@ if (!isset($_SESSION['access_token'])) {
                     throw new RuntimeException('Name and condition are required.');
                 }
 
-                save_asset($pdo, 'facility', [
+                save_facility($pdo, 'facility', [
                     'name' => $name,
                     'condition' => $condition,
                     'date_acquired' => $_POST['date_acquired'] ?? '',
@@ -69,7 +65,7 @@ if (!isset($_SESSION['access_token'])) {
     $search = trim((string)($_GET['search'] ?? ''));
     $filterCondition = trim((string)($_GET['condition'] ?? ''));
 
-    $assets = facilities_list(
+    $facilities = facilities_list(
         $pdo,
         $search,
         $filterCondition
@@ -166,20 +162,13 @@ if (!isset($_SESSION['access_token'])) {
                         </tr>
                     <?php else: ?>
                         <?php foreach ($facilities as $facility): ?>
-                            <?php
-                            $condition = (string)($facility['condition'] ?? 'Unknown');
-                            $floor = (string)($facility['location'] ?? '');
-                            ?>
-                            <tr data-floor="<?= htmlspecialchars(strtolower($floor), ENT_QUOTES, 'UTF-8') ?>">
+                            <tr data-floor="<?= e($facility['location'] ?? '') ?>">
                                 <td><?= (int)$facility['id'] ?></td>
-                                <td><?= htmlspecialchars($facility['name'], ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= htmlspecialchars($floor, ENT_QUOTES, 'UTF-8') ?></td>
-                                <td><?= condition_badge($condition) ?></td>
+                                <td><?= e($facility['name']) ?></td>
+                                <td><?= e($facility['location'] ?? '') ?></td>
+                                <td><?= condition_badge($facility['condition'] ?? '') ?></td>
                                 <td>
-                                    <a href="viewfacility.php?id=<?= (int)$facility['id'] ?>"
-                                        class="view-button">
-                                        <i class="fa-solid fa-eye"></i> View
-                                    </a>
+                                    <a href="viewfacility.php?id=<?= (int)$facility['id'] ?>">View</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

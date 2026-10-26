@@ -1,13 +1,8 @@
 <?php
 require_once __DIR__ . '/_app.php';
-$equipmentRows = $pdo->query(
-    'SELECT e.id, e.name, e.location, e.condition, f.location AS floor
-       FROM equipment AS e
-       LEFT JOIN facilities AS f ON f.id = e.facility_id
-      ORDER BY e.id DESC'
-)->fetchAll(PDO::FETCH_ASSOC);
-require_login();
 
+require_login();
+// $userId = (int) $_SESSION['user_id'];
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -58,7 +53,7 @@ if (!isset($_SESSION['access_token'])) {
                     throw new RuntimeException('Name, location and condition are required.');
                 }
 
-                save_asset($pdo, 'equipment', [
+                save_equipment($pdo, 'equipment', [
                     'name' => $name,
                     'brand' => $_POST['brand'] ?? '',
                     'model' => $_POST['model'] ?? '',

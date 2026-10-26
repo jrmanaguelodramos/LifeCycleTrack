@@ -4,6 +4,7 @@ require_login();
 
 $message = '';
 $error = '';
+$values = $_POST;
 ?>
 <!DOCTYPE html>
 <html lang="en">
