@@ -53,7 +53,7 @@ if (!isset($_SESSION['access_token'])) {
                     throw new RuntimeException('Name, location and condition are required.');
                 }
 
-                save_equipment($pdo, 'equipment', [
+                save_equipment($pdo, [
                     'name' => $name,
                     'brand' => $_POST['brand'] ?? '',
                     'model' => $_POST['model'] ?? '',
@@ -159,14 +159,14 @@ if (!isset($_SESSION['access_token'])) {
                 </thead>
 
                 <tbody>
-                    <?php if (empty($assets)): ?>
+                    <?php if (empty($equipmentRows)): ?>
                         <tr>
                             <td colspan="100%" class="text-center py-6">
                                 No equipment found.
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($assets as $asset): ?>
+                        <?php foreach ($equipmentRows as $asset): ?>
                             <tr>
                                 <td>
                                     <?= htmlspecialchars(

@@ -53,18 +53,20 @@ try {
     // Total assets by category.
     $totalFacilities = getCount(
         $pdo,
-        "SELECT COUNT(*) FROM assets WHERE asset_type = 'facility'"
+        "SELECT COUNT(*) FROM facilities"
     );
 
     $totalEquipments = getCount(
         $pdo,
-        "SELECT COUNT(*) FROM assets WHERE asset_type = 'equipment'"
+        "SELECT COUNT(*) FROM equipment"
     );
 
     // Count condition alerts.
     $conditionAlerts = getCount(
         $pdo,
-        "SELECT COUNT(*) FROM assets WHERE LOWER(condition) = 'poor'"
+        "SELECT COUNT(*) FROM facility_condition_assessments WHERE LOWER(condition) = 'poor'
+         UNION ALL
+         SELECT COUNT(*) FROM equipment_condition_assessments WHERE LOWER(condition) = 'poor'"
     );
 
     // Facility condition distribution.
@@ -77,8 +79,7 @@ try {
                 ELSE NULL
             END AS condition_name,
             COUNT(*) AS total
-         FROM assets
-         WHERE asset_type = 'facility'
+         FROM facility_condition_assessments
          GROUP BY condition_name"
     );
 
@@ -98,8 +99,7 @@ try {
                 ELSE NULL
             END AS condition_name,
             COUNT(*) AS total
-         FROM assets
-         WHERE asset_type = 'equipment'
+         FROM equipment_condition_assessments
          GROUP BY condition_name"
     );
 
@@ -118,10 +118,11 @@ try {
             al.created_at,
             al.action,
             al.details,
-            a.name AS asset_name,
-            a.asset_type
+            f.name AS asset_name,
+            'facility' AS asset_type
          FROM activity_log AS al
-         LEFT JOIN assets AS a ON a.id = al.asset_id
+         LEFT JOIN facilities AS f ON f.id = al.facility_id
+         LEFT JOIN equipment AS e ON e.id = al.equipment_id
          ORDER BY al.created_at DESC
          LIMIT 7"
     );

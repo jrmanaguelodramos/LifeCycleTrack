@@ -76,25 +76,38 @@ function log_activity(PDO $pdo, ?int $assetId, string $action, string $details =
     ]);
 }
 
-function fetch_assets(PDO $pdo, string $type, string $search = '', string $condition = ''): array {
-    $sql = 'SELECT * FROM assets WHERE asset_type = :type';
-    $params = [':type' => $type];
+function fetch_equipment(PDO $pdo, string $search = '', string $condition = ''): array
+{
+    $sql = 'SELECT e.*, f.name AS facility_name
+            FROM equipment e
+            LEFT JOIN facilities f ON f.id = e.facility_id';
+    $params = [];
+
+    $filters = [];
 
     if ($search !== '') {
-        $sql .= ' AND (name ILIKE :search OR location ILIKE :search OR brand ILIKE :search OR model ILIKE :search)';
-        $params[':search'] = '%' . $search . '%';
+        $filters[] = '(e.name ILIKE :name_search OR e.brand ILIKE :brand_search OR e.model ILIKE :model_search)';
+        $pattern = '%' . $search . '%';
+        $params['name_search'] = $pattern;
+        $params['brand_search'] = $pattern;
+        $params['model_search'] = $pattern;
     }
 
     if ($condition !== '') {
-        $sql .= ' AND condition = :condition';
-        $params[':condition'] = $condition;
+        $filters[] = 'e.condition = :condition';
+        $params['condition'] = $condition;
     }
 
-    $sql .= ' ORDER BY id DESC';
+    if ($filters) {
+        $sql .= ' WHERE ' . implode(' AND ', $filters);
+    }
+
+    $sql .= ' ORDER BY e.id DESC';
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    return $stmt->fetchAll();
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function asset_by_id(PDO $pdo, int $id): ?array {
@@ -160,4 +173,141 @@ function update_condition(PDO $pdo, int $assetId, string $condition, string $not
         $pdo->rollBack();
         throw $e;
     }
+}
+
+function facilities_list(PDO $pdo, string $search = '', string $condition = ''): array
+{
+    $sql = 'SELECT * FROM facilities';
+    $params = [];
+    $filters = [];
+
+    if ($search !== '') {
+        $filters[] = '(name ILIKE :name_search OR location ILIKE :location_search)';
+        $pattern = '%' . $search . '%';
+        $params['name_search'] = $pattern;
+        $params['location_search'] = $pattern;
+    }
+
+    if ($condition !== '') {
+        $filters[] = 'condition = :condition';
+        $params['condition'] = $condition;
+    }
+
+    if ($filters) {
+        $sql .= ' WHERE ' . implode(' AND ', $filters);
+    }
+
+    $sql .= ' ORDER BY id DESC';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function save_facility(PDO $pdo, array $data): int
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO public.facilities (name, condition, date_acquired, remarks)
+         VALUES (:name, :condition, :date_acquired, :remarks)
+         RETURNING id'
+    );
+
+    $stmt->execute([
+        ':name' => trim((string)$data['name']),
+        ':condition' => (string)$data['condition'],
+        ':date_acquired' => ($data['date_acquired'] ?? '') !== ''
+            ? $data['date_acquired']
+            : null,
+        ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
+    ]);
+
+    return (int)$stmt->fetchColumn();
+}
+
+function save_equipment(PDO $pdo, array $data): int
+{
+    $stmt = $pdo->prepare(
+        'INSERT INTO public.equipment
+            (name, brand, model, category, location, date_acquired, condition, details_name, remarks)
+         VALUES
+            (:name, :brand, :model, :category, :location, :date_acquired, :condition, :details_name, :remarks)
+         RETURNING id'
+    );
+
+    $stmt->execute([
+        ':name' => trim((string)$data['name']),
+        ':brand' => trim((string)($data['brand'] ?? '')) ?: null,
+        ':model' => trim((string)($data['model'] ?? '')) ?: null,
+        ':category' => trim((string)($data['category'] ?? '')) ?: null,
+        ':location' => trim((string)$data['location']),
+        ':date_acquired' => ($data['date_acquired'] ?? '') !== ''
+            ? $data['date_acquired']
+            : null,
+        ':condition' => (string)$data['condition'],
+        ':details_name' => trim((string)($data['details_name'] ?? '')) ?: null,
+        ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
+    ]);
+
+    return (int)$stmt->fetchColumn();
+}
+
+function facility_condition(PDO $pdo, string $search = '', string $condition = ''): array
+{
+    $sql = 'SELECT * FROM public.facilities';
+    $filters = [];
+    $params = [];
+
+    if ($search !== '') {
+        $filters[] = '(name ILIKE :name OR location ILIKE :location)';
+        $params[':name'] = '%' . $search . '%';
+        $params[':location'] = '%' . $search . '%';
+    }
+
+    if ($condition !== '') {
+        $filters[] = 'condition = :condition';
+        $params[':condition'] = $condition;
+    }
+
+    if ($filters) {
+        $sql .= ' WHERE ' . implode(' AND ', $filters);
+    }
+
+    $sql .= ' ORDER BY id DESC';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function equipment_condition(PDO $pdo, string $search = '', string $condition = ''): array
+{
+    $sql = 'SELECT * FROM public.equipment';
+    $filters = [];
+    $params = [];
+
+    if ($search !== '') {
+        $filters[] = '(name ILIKE :name OR location ILIKE :location OR asset_tag ILIKE :asset_tag)';
+        $pattern = '%' . $search . '%';
+        $params[':name'] = $pattern;
+        $params[':location'] = $pattern;
+        $params[':asset_tag'] = $pattern;
+    }
+
+    if ($condition !== '') {
+        $filters[] = 'condition = :condition';
+        $params[':condition'] = $condition;
+    }
+
+    if ($filters) {
+        $sql .= ' WHERE ' . implode(' AND ', $filters);
+    }
+
+    $sql .= ' ORDER BY id DESC';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }

@@ -48,7 +48,7 @@ if (!isset($_SESSION['access_token'])) {
                     throw new RuntimeException('Name and condition are required.');
                 }
 
-                save_facility($pdo, 'facility', [
+                save_facility($pdo, [
                     'name' => $name,
                     'condition' => $condition,
                     'date_acquired' => $_POST['date_acquired'] ?? '',

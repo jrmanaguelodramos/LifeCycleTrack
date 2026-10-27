@@ -65,7 +65,7 @@ if (!hash) {
 
     } else {
 
-        fetch("https://ukgusfmwmynuwdsiuzir.supabase.co/auth/v1/user", {
+        fetch("https://bxudeybkiplnrzqqiwbn.supabase.co/auth/v1/user", {
             method: "GET",
             headers: {
                 "apikey": "sb_publishable_1PMD6FuARpl31ATA_acu9w_VHIpYMUk",
