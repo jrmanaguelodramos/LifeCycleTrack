@@ -403,7 +403,6 @@ $equipmentAge = !empty($values['year']) &&
                         id="room"
                         name="room"
                         required
-                        disabled
                         class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                         <option value="">Select a floor first</option>
                     </select>
@@ -566,6 +565,30 @@ $equipmentAge = !empty($values['year']) &&
             clearTimeout(warningTimer);
             warningTimer = setTimeout(() => toggleToast(warningToast, false), 3000);
         }
+
+        roomSelect.parentElement.addEventListener('click', function() {
+            if (!floorSelect.value) {
+                // Highlight the floor selector
+                floorSelect.classList.remove('border-slate-300');
+                floorSelect.classList.add('border-red-500', 'ring-1', 'ring-red-500');
+
+                // Show the existing warning toast
+                showToast('Please select an Assigned Floor first.');
+            }
+        });
+
+        floorSelect.addEventListener('change', function() {
+            if (floorSelect.value) {
+                floorSelect.classList.remove(
+                    'border-red-500',
+                    'ring-2',
+                    'ring-red-200'
+                );
+
+                floorLabel.classList.remove('text-red-600');
+                floorLabel.classList.add('text-gray-700');
+            }
+        });
 
         function showSuccessToast() {
             toggleToast(successToast, true);
