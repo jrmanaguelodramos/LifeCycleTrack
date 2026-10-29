@@ -10,6 +10,9 @@ if (empty($_SESSION['access_token'])) {
 
 require_once __DIR__ . '/../config/database.php';
 
+const EQUIPMENT_VIEW_PAGE = 'viewequip.php';
+const FACILITY_VIEW_PAGE  = 'viewfacility.php';
+
 function e($value): string
 {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
@@ -37,6 +40,37 @@ function calculateScore(array $counts): int
     return (int) round($score);
 }
 
+function getConditionCounts(PDO $pdo, string $table): array
+{
+    $allowedTables = ['facilities', 'equipment'];
+    if (!in_array($table, $allowedTables, true)) {
+        throw new InvalidArgumentException('Invalid table.');
+    }
+
+    $counts = ['Good' => 0, 'Fair' => 0, 'Poor' => 0];
+
+    $stmt = $pdo->query(
+        "SELECT
+            CASE
+                WHEN LOWER(condition) = 'good' THEN 'Good'
+                WHEN LOWER(condition) = 'fair' THEN 'Fair'
+                WHEN LOWER(condition) = 'poor' THEN 'Poor'
+                ELSE NULL
+            END AS condition_name,
+            COUNT(*) AS total
+         FROM {$table}
+         GROUP BY condition_name"
+    );
+
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if ($row['condition_name'] !== null) {
+            $counts[$row['condition_name']] = (int) $row['total'];
+        }
+    }
+
+    return $counts;
+}
+
 $dashboardError = '';
 $totalFacilities = 0;
 $totalEquipments = 0;
@@ -50,7 +84,7 @@ $equipmentsScore = 0;
 $recentActivities = [];
 
 try {
-    // Total assets by category.
+
     $totalFacilities = getCount(
         $pdo,
         "SELECT COUNT(*) FROM facilities"
@@ -61,83 +95,99 @@ try {
         "SELECT COUNT(*) FROM equipment"
     );
 
-    // Count condition alerts.
     $conditionAlerts = getCount(
         $pdo,
-        "SELECT COUNT(*) FROM facility_condition_assessments WHERE LOWER(condition) = 'poor'
-         UNION ALL
-         SELECT COUNT(*) FROM equipment_condition_assessments WHERE LOWER(condition) = 'poor'"
-    );
-
-    // Facility condition distribution.
-    $stmt = $pdo->query(
         "SELECT
-            CASE
-                WHEN LOWER(condition) = 'good' THEN 'Good'
-                WHEN LOWER(condition) = 'fair' THEN 'Fair'
-                WHEN LOWER(condition) = 'poor' THEN 'Poor'
-                ELSE NULL
-            END AS condition_name,
-            COUNT(*) AS total
-         FROM facility_condition_assessments
-         GROUP BY condition_name"
+            (SELECT COUNT(*) FROM facilities WHERE LOWER(condition) = 'poor')
+          + (SELECT COUNT(*) FROM equipment  WHERE LOWER(condition) = 'poor')"
     );
 
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if ($row['condition_name'] !== null) {
-            $facilitiesCounts[$row['condition_name']] = (int) $row['total'];
-        }
-    }
-
-    // Equipment condition distribution.
-    $stmt = $pdo->query(
-        "SELECT
-            CASE
-                WHEN LOWER(condition) = 'good' THEN 'Good'
-                WHEN LOWER(condition) = 'fair' THEN 'Fair'
-                WHEN LOWER(condition) = 'poor' THEN 'Poor'
-                ELSE NULL
-            END AS condition_name,
-            COUNT(*) AS total
-         FROM equipment_condition_assessments
-         GROUP BY condition_name"
-    );
-
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if ($row['condition_name'] !== null) {
-            $equipmentsCounts[$row['condition_name']] = (int) $row['total'];
-        }
-    }
+    $facilitiesCounts = getConditionCounts($pdo, 'facilities');
+    $equipmentsCounts = getConditionCounts($pdo, 'equipment');
 
     $facilitiesScore = calculateScore($facilitiesCounts);
     $equipmentsScore = calculateScore($equipmentsCounts);
 
-    // Most recent seven activity records.
     $stmt = $pdo->query(
         "SELECT
             al.created_at,
             al.action,
             al.details,
-            f.name AS asset_name,
-            'facility' AS asset_type
+            al.facility_id,
+            al.equipment_id,
+            COALESCE(f.name, e.name) AS asset_name,
+            CASE WHEN al.equipment_id IS NOT NULL THEN 'equipment' ELSE 'facility' END AS asset_type
          FROM activity_log AS al
          LEFT JOIN facilities AS f ON f.id = al.facility_id
          LEFT JOIN equipment AS e ON e.id = al.equipment_id
          ORDER BY al.created_at DESC
-         LIMIT 7"
+         LIMIT 5"
     );
 
     $recentActivities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 } catch (Throwable $exception) {
-    // Log technical details privately; don't expose credentials to users.
     error_log('Dashboard database error: ' . $exception->getMessage());
     $dashboardError = 'Unable to load dashboard data. Check the database tables and connection.';
 }
 
-/**
- * Render a lifecycle doughnut chart and condition bars.
- */
+
+function activityLink(array $activity): ?string
+{
+    if (empty($activity['asset_name'])) {
+        return null;
+    }
+
+    if (!empty($activity['equipment_id'])) {
+        return EQUIPMENT_VIEW_PAGE . '?id=' . (int) $activity['equipment_id'];
+    }
+
+    if (!empty($activity['facility_id'])) {
+        return FACILITY_VIEW_PAGE . '?id=' . (int) $activity['facility_id'];
+    }
+
+    return null;
+}
+
+function formatAction(?string $action): string
+{
+    $action = trim((string) $action);
+    return $action === '' ? 'Activity' : ucwords(str_replace(['_', '-'], ' ', $action));
+}
+
+function parseDetails(?string $details): array
+{
+    $badgeColors = [
+        'good' => ['#e7f8ed', '#1e7d3f'],
+        'fair' => ['#fff1e0', '#b45309'],
+        'poor' => ['#ffe5e5', '#b91c1c'],
+    ];
+    $default = ['#eef2f6', '#374151'];
+
+    $items = [];
+    foreach (explode(';', (string) $details) as $part) {
+        $part = trim($part);
+        if ($part === '') {
+            continue;
+        }
+
+        $label = '';
+        $value = $part;
+        if (strpos($part, ':') !== false) {
+            [$label, $value] = array_map('trim', explode(':', $part, 2));
+        }
+
+        $colors = $default;
+        if (strcasecmp($label, 'Condition') === 0) {
+            $colors = $badgeColors[strtolower($value)] ?? $default;
+        }
+
+        $items[] = ['label' => $label, 'value' => $value, 'bg' => $colors[0], 'fg' => $colors[1]];
+    }
+
+    return $items;
+}
+
 function lifecycleChart(int $score, array $counts): void
 {
     $colors = [
@@ -374,6 +424,7 @@ function lifecycleChart(int $score, array $counts): void
                     <?php else: ?>
 
                         <?php foreach ($recentActivities as $activity): ?>
+                            <?php $link = activityLink($activity); ?>
                             <tr>
                                 <td>
                                     <?php
@@ -393,11 +444,34 @@ function lifecycleChart(int $score, array $counts): void
                                 </td>
 
                                 <td>
-                                    <?= e($activity['action'] ?? '') ?>
+                                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-weight:400;">
+                                        <div>
+                                            <div style="font-weight:600;"><?= e(formatAction($activity['action'] ?? '')) ?></div>
 
-                                    <?php if (!empty($activity['details'])): ?>
-                                        — <?= e($activity['details']) ?>
-                                    <?php endif; ?>
+                                            <?php $detailItems = parseDetails($activity['details'] ?? ''); ?>
+                                            <?php if ($detailItems): ?>
+                                                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                                                    <?php foreach ($detailItems as $item): ?>
+                                                        <span style="display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:500;background:<?= e($item['bg']) ?>;color:<?= e($item['fg']) ?>;">
+                                                            <?php if ($item['label'] !== ''): ?>
+                                                                <span style="opacity:.75;"><?= e($item['label']) ?>:</span>
+                                                            <?php endif; ?>
+                                                            <?= e($item['value']) ?>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <?php if ($link !== null): ?>
+                                            <a href="<?= e($link) ?>"
+                                               title="View <?= e($activity['asset_name']) ?>"
+                                               aria-label="View <?= e($activity['asset_name']) ?>"
+                                                 class="border rounded-2xl p-2 bg-[#15588F] text-white hover:bg-[#10456f] transition">
+                                                <i class="fa-solid fa-eye"></i> View
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -409,4 +483,4 @@ function lifecycleChart(int $score, array $counts): void
         </div>
     </main>
 </body>
-</html>
+</html>s

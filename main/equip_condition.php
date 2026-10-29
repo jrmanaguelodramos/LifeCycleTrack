@@ -1,14 +1,143 @@
 <?php
 require_once __DIR__ . '/_app.php';
-$search = trim((string)($_GET['search'] ?? ''));
-$filterCondition = trim((string)($_GET['condition'] ?? ''));
 
-$conditionAssets = equipment_condition(
-    $pdo,
-    $search,
-    $filterCondition
-);
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_login();
+
+if (!isset($_SESSION['access_token'])) {
+    header("Location: ../auth/login.php");
+    exit;
+}
+
+$actor = $_SESSION['user']['email']
+    ?? $_SESSION['email']
+    ?? $_SESSION['username']
+    ?? 'unknown';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    $equipmentId = (int) ($input['equipment_id'] ?? 0);
+    $condition   = (string) ($input['condition'] ?? '');
+    $status      = trim((string) ($input['status'] ?? ''));
+    $notes       = trim((string) ($input['notes'] ?? ''));
+
+    $allowedStatuses = [
+        'Serviceable (functioning)',
+        'Unserviceable: for maintenance',
+        'Unserviceable: for repair',
+        'Unserviceable: for inspection',
+        'Beyond repair (irreparable)',
+        'Subject for disposal or condemnation',
+        'Disposed',
+    ];
+
+    if (
+        $equipmentId <= 0 ||
+        !in_array($condition, ['Good', 'Fair', 'Poor'], true) ||
+        !in_array($status, $allowedStatuses, true)
+    ) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Invalid input.']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $check = $pdo->prepare('SELECT 1 FROM equipment WHERE id = :id');
+        $check->execute([':id' => $equipmentId]);
+        if (!$check->fetchColumn()) {
+            throw new RuntimeException('Equipment not found.');
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO equipment_condition_assessments
+                (equipment_id, condition, status, notes, assessed_by)
+             VALUES (:id, :condition, :status, :notes, :by)'
+        );
+        $stmt->execute([
+            ':id'        => $equipmentId,
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':notes'     => $notes !== '' ? $notes : null,
+            ':by'        => $actor,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'UPDATE equipment
+                SET condition   = :condition,
+                    status      = :status,
+                    disposed_at = CASE
+                                    WHEN CAST(:status2 AS text) = \'Disposed\'
+                                    THEN COALESCE(disposed_at, now())
+                                    ELSE disposed_at
+                                  END,
+                    updated_at  = now()
+              WHERE id = :id'
+        );
+        $stmt->execute([
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':status2'   => $status,
+            ':id'        => $equipmentId,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO activity_log (equipment_id, action, details, actor)
+             VALUES (:id, :action, :details, :actor)'
+        );
+        $stmt->execute([
+            ':id'      => $equipmentId,
+            ':action'  => 'condition_assessment',
+            ':details' => "Condition: {$condition}; Status: {$status}",
+            ':actor'   => $actor,
+        ]);
+
+        $pdo->commit();
+
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Equipment assessment save failed: ' . $ex->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Unable to save the assessment.']);
+    }
+    exit;
+}
+
+function load_equipment_assessments(PDO $pdo): array
+{
+    $sql = "
+        SELECT
+            q.id,
+            q.name,
+            q.condition,
+            q.status,
+            q.image_url,
+            COALESCE(
+                (SELECT a.notes
+                   FROM equipment_condition_assessments a
+                  WHERE a.equipment_id = q.id
+                  ORDER BY a.assessed_at DESC, a.id DESC
+                  LIMIT 1),
+                q.remarks
+            ) AS assessment_notes
+        FROM equipment q
+        ORDER BY q.id ASC
+    ";
+
+    return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$conditionAssets = load_equipment_assessments($pdo);
 ?>
 
 <!DOCTYPE html>
@@ -24,6 +153,17 @@ require_login();
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/condition.css">
     <link rel="stylesheet" href="../css/equipment_condition.css">
+
+    <style>
+        /* Loading state for the confirm modal buttons */
+        #confirmModal button:disabled {
+            cursor: not-allowed;
+        }
+
+        #confirmModal #confirmequipmentSave:disabled {
+            background-color: #103F6C;
+        }
+    </style>
 </head>
 
 <body>
@@ -70,8 +210,9 @@ require_login();
                                 <tr
                                     data-asset-id="<?= (int) $asset['id'] ?>"
                                     data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
-                                    data-status="">
-                                    <td><?= str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                    data-status="<?= e($asset['status'] ?? '') ?>"
+                                    data-image="<?= e($asset['image_url'] ?? '') ?>">
+                                    <td><?= 'EQ-' . str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
 
                                     <td><?= e($asset['name']) ?></td>
 
@@ -186,11 +327,11 @@ require_login();
             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
                 <i class="fa-solid fa-circle-question text-3xl text-[#155B92]"></i>
             </div>
-            <h2 class="mb-2 text-xl font-bold text-gray-800">Save Changes</h2>
-            <p class="mb-6 text-sm text-gray-600">Are you sure you want to save the changes to this equipment?</p>
+            <h2 class="mb-2 text-xl font-bold text-gray-800">Confirm Changes</h2>
+            <p class="mb-6 text-sm text-gray-500">Are you sure you want to save these equipment changes?</p>
             <div class="flex justify-center gap-3">
-                <button type="button" id="cancelequipmentConfirm" class="rounded-lg border border-slate-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-100">Cancel</button>
-                <button type="button" id="confirmequipmentSave" class="cursor-pointer rounded-lg bg-[#155B92] px-5 py-2 text-sm text-white hover:bg-[#10456f]">Yes, Save</button>
+                <button type="button" id="cancelequipmentConfirm" class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
+                <button type="button" id="confirmequipmentSave" class="cursor-pointer rounded-lg bg-[#15588F] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#103F6C]"><i class="fa-solid fa-check mr-1"></i>Yes, Save</button>
             </div>
         </div>
     </div>
@@ -234,6 +375,7 @@ require_login();
             const emptyState = document.getElementById("emptyState");
             const equipmentId = document.getElementById("id");
             const equipmentName = document.getElementById("name");
+            const equipmentImage = document.getElementById("image");
             const panelCondition = document.getElementById("panelCondition");
             const notes = document.getElementById("notes");
             const equipStatus = document.getElementById("equipStatus");
@@ -245,12 +387,14 @@ require_login();
             const confirmModal = document.getElementById("confirmModal");
             const cancelSave = document.getElementById("cancelequipmentConfirm");
             const confirmSave = document.getElementById("confirmequipmentSave");
+            const confirmSaveDefaultHtml = confirmSave.innerHTML;
             const rows = Array.from(table.querySelectorAll("tbody tr"));
 
             const rowsPerPage = 10;
             const toastTimers = {};
             let currentPage = 1;
             let selectedRow = null;
+            let isSaving = false;
 
             function showToast(type, message) {
                 const toast = document.getElementById("toast-" + type);
@@ -307,6 +451,7 @@ require_login();
                 panelCondition.textContent = "Current condition: " + condition;
                 notes.value = row.dataset.notes || "";
                 equipStatus.value = row.dataset.status || "";
+                equipmentImage.src = row.dataset.image || "../img/logo.png";
 
                 const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
                 if (radio) radio.checked = true;
@@ -318,13 +463,8 @@ require_login();
             }
 
             rows.forEach(row => {
-                row.querySelector(".edit-button")?.addEventListener("click", () => openequipment(row));
-
-                row.querySelector(".view-button-action")?.addEventListener("click", event => {
-                    event.preventDefault();
-                    openequipment(row);
-                    status.textContent = "Displaying equipment details.";
-                });
+                row.querySelector(".edit-button")?.addEventListener("click", () =>
+                    openequipment(row));
             });
 
             function getFilteredRows() {
@@ -381,8 +521,18 @@ require_login();
             }
 
             function closeConfirmModal() {
+                if (isSaving) return;
                 confirmModal.classList.add("hidden");
                 confirmModal.classList.remove("flex");
+            }
+
+            function setSaving(saving) {
+                isSaving = saving;
+                confirmSave.disabled = saving;
+                cancelSave.disabled = saving;
+                confirmSave.innerHTML = saving ?
+                    '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...' :
+                    confirmSaveDefaultHtml;
             }
 
             form.addEventListener("submit", event => {
@@ -410,7 +560,9 @@ require_login();
 
             cancelSave.addEventListener("click", closeConfirmModal);
 
-            confirmSave.addEventListener("click", () => {
+            confirmSave.addEventListener("click", async () => {
+                if (isSaving) return;
+
                 if (!selectedRow) {
                     closeConfirmModal();
                     showToast("danger", "No equipment is selected.");
@@ -425,19 +577,46 @@ require_login();
                     return;
                 }
 
-                updateCondition(selectedRow, selectedRadio.value);
-                selectedRow.dataset.notes = notes.value;
-                selectedRow.dataset.status = equipStatus.value;
+                setSaving(true);
 
-                panelCondition.textContent = "Current condition: " + selectedRadio.value;
+                try {
+                    const response = await fetch(window.location.pathname, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            equipment_id: selectedRow.dataset.assetId,
+                            condition: selectedRadio.value,
+                            status: equipStatus.value,
+                            notes: notes.value
+                        })
+                    });
 
-                const savedName = equipmentName.textContent;
+                    const result = await response.json().catch(() => ({}));
 
-                closeConfirmModal();
-                status.textContent = "Assessment updated for " + savedName + ".";
-                renderTable();
+                    if (!response.ok || !result.ok) {
+                        throw new Error(result.message || "Unable to save the assessment.");
+                    }
 
-                showToast("success", "Equipment condition saved successfully.");
+                    updateCondition(selectedRow, selectedRadio.value);
+                    selectedRow.dataset.notes = notes.value;
+                    selectedRow.dataset.status = equipStatus.value;
+
+                    panelCondition.textContent = "Current condition: " + selectedRadio.value;
+
+                    const savedName = equipmentName.textContent;
+
+                    status.textContent = "Assessment updated for " + savedName + ".";
+                    renderTable();
+
+                    showToast("success", "Equipment condition saved successfully.");
+                } catch (error) {
+                    showToast("danger", error.message);
+                } finally {
+                    setSaving(false);
+                    closeConfirmModal();
+                }
             });
 
             confirmModal.addEventListener("click", event => {

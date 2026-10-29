@@ -61,14 +61,11 @@
 }
 
 .custom-table a {
-    color: #155B92;
+    color: #ffff;
     font-weight: 500;
     text-decoration: none;
 }
 
-.custom-table a:hover {
-    text-decoration: underline;
-}
 
 .main-content {
     margin-left: 256px !important; 

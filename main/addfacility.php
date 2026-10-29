@@ -5,6 +5,93 @@ require_login();
 $message = '';
 $error = '';
 $values = $_POST;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    try {
+        if (function_exists('verify_csrf')) {
+            verify_csrf();
+        }
+
+        if (($_POST['action'] ?? '') !== 'add') {
+            throw new RuntimeException('Invalid form submission.');
+        }
+
+        $name = trim($_POST['name'] ?? '');
+        $location = trim($_POST['location'] ?? '');
+        $year = filter_var($_POST['year'] ?? null, FILTER_VALIDATE_INT);
+        $estimated = isset($_POST['year_estimated']) ? true : false;
+        $condition = $_POST['status'] ?? '';
+        $remarks = trim($_POST['remarks'] ?? '');
+
+        if ($name === '') {
+            throw new RuntimeException('Facility name is required.');
+        }
+
+        $allowedLocations = [
+            'Ground Floor',
+            '2nd Floor',
+            '3rd Floor',
+            '4th Floor'
+        ];
+
+        if (!in_array($location, $allowedLocations, true)) {
+            throw new RuntimeException('Please select a valid floor.');
+        }
+
+        if ($year === false || $year < 1970 || $year > (int) date('Y')) {
+            throw new RuntimeException('Please enter a valid acquisition year.');
+        }
+
+        if (!in_array($condition, ['Good', 'Fair', 'Poor'], true)) {
+            throw new RuntimeException('Please select a valid condition.');
+        }
+
+        require_once __DIR__ . '/../config/database.php';
+
+        if (!isset($pdo) || !$pdo instanceof PDO) {
+            throw new RuntimeException('The database connection was not initialized.');
+        }
+
+        $sql = '
+            INSERT INTO public.facilities (
+                name,
+                location,
+                acquisition_year,
+                is_estimated_year,
+                condition,
+                remarks
+            )
+            VALUES (
+                :name,
+                :location,
+                :acquisition_year,
+                :is_estimated_year,
+                :condition,
+                :remarks
+            )
+        ';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':name', $name, PDO::PARAM_STR);
+        $stmt->bindValue(':location', $location, PDO::PARAM_STR);
+        $stmt->bindValue(':acquisition_year', $year, PDO::PARAM_INT);
+        $stmt->bindValue(':is_estimated_year', $estimated, PDO::PARAM_BOOL);
+        $stmt->bindValue(':condition', $condition, PDO::PARAM_STR);
+        $stmt->bindValue(
+            ':remarks',
+            $remarks !== '' ? $remarks : null,
+            $remarks !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL
+        );
+        $stmt->execute();
+
+        $_SESSION['facilityAddedToast'] = true;
+        header('Location: facilities_list.php');
+        exit;
+    } catch (Throwable $e) {
+        error_log('Add facility error: ' . $e->getMessage());
+        $error = 'Unable to add facility. Please check your information and try again.';
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,17 +120,22 @@ $values = $_POST;
         <p class="mb-3 mt-2 text-gray-600">Register new facility</p>
 
         <?php if ($error !== ''): ?>
-            <div class="mb-5 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"><?= htmlspecialchars($error) ?></div>
+            <div class="mb-5 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
         <?php if ($message !== ''): ?>
-            <div class="mb-5 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700"><?= htmlspecialchars($message) ?></div>
+            <div class="mb-5 rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-700"><?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?></div>
         <?php endif; ?>
 
         <form method="POST" action="" enctype="multipart/form-data" novalidate class="mt-5 rounded-lg border border-slate-200 bg-white p-6">
             <input type="hidden" name="action" value="add">
-
-            <?php if (function_exists('csrf_field')) { echo csrf_field(); } elseif (function_exists('csrf_token')) { echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">'; } ?>
+            <?php
+            if (function_exists('csrf_field')) {
+                echo csrf_field();
+            } elseif (function_exists('csrf_token')) {
+                echo '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') . '">';
+            }
+            ?>
 
             <h2 class="mb-4 border-b border-slate-200 pb-2 text-lg font-semibold text-[#103F6C]">Facility Information</h2>
 
@@ -55,7 +147,7 @@ $values = $_POST;
             <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
                 <div class="md:col-span-2">
                     <label for="name" class="mb-1 block text-sm font-medium text-gray-700">Facility Name <span class="text-red-500">*</span></label>
-                    <input id="name" name="name" type="text" placeholder="e.g. Comfort Room, Multi-Purpose Hall" required class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
+                    <input id="name" name="name" type="text" value="<?= htmlspecialchars($values['name'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Comfort Room, Multi-Purpose Hall" required class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                 </div>
 
                 <div>
@@ -69,10 +161,9 @@ $values = $_POST;
                     <select id="location" name="location" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                         <option value="">Select location</option>
                         <optgroup label="Floor">
-                            <option>Ground Floor</option>
-                            <option>2nd Floor</option>
-                            <option>3rd Floor</option>
-                            <option>4th Floor</option>
+                            <?php foreach (['Ground Floor', '2nd Floor', '3rd Floor', '4th Floor'] as $floor): ?>
+                                <option value="<?= htmlspecialchars($floor, ENT_QUOTES, 'UTF-8') ?>" <?= (($values['location'] ?? '') === $floor) ? 'selected' : '' ?>><?= htmlspecialchars($floor, ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
                         </optgroup>
                     </select>
                 </div>
@@ -81,36 +172,35 @@ $values = $_POST;
             <div class="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <div>
                     <h2 class="mb-4 border-b border-slate-200 pb-2 text-lg font-semibold text-[#103F6C]">Acquisition Date</h2>
-
                     <div>
                         <label for="year" class="mb-1 block text-sm font-medium text-gray-700">Acquisition Year <span class="text-red-500">*</span></label>
-                        <input id="year" name="year" type="number" required min="1970" max="<?= date('Y') ?>" placeholder="YYYY" class="w-70 max-w-md rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
+                        <input id="year" name="year" type="number" required min="1970" max="<?= date('Y') ?>" value="<?= htmlspecialchars($values['year'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="YYYY" class="w-70 max-w-md rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
 
                         <label class="mt-1.5 flex items-center gap-2 text-sm text-gray-600">
-                            <input id="yearEst" name="year_estimated" type="checkbox" value="1">
+                            <input id="yearEst" name="year_estimated" type="checkbox" value="1" <?= isset($values['year_estimated']) ? 'checked' : '' ?>>
                             Estimated year
                         </label>
                     </div>
                 </div>
 
+                
+                
+
                 <div>
                     <h2 class="mb-4 border-b border-slate-200 pb-2 text-lg font-semibold text-[#103F6C]">Lifecycle Status</h2>
-
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <div>
                             <label for="status" class="mb-1 block text-sm font-medium text-gray-700">Current Status <span class="text-red-500">*</span></label>
                             <select id="status" name="status" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
-                                <optgroup label="Select Status">
-                                    <option>Good</option>
-                                    <option>Fair</option>
-                                    <option>Poor</option>
-                                </optgroup>
+                                <?php foreach (['Good', 'Fair', 'Poor'] as $conditionOption): ?>
+                                    <option value="<?= $conditionOption ?>" <?= (($values['status'] ?? 'Good') === $conditionOption) ? 'selected' : '' ?>><?= $conditionOption ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
 
                         <div class="md:col-span-2">
                             <label for="remarks" class="mb-1 block text-sm font-medium text-gray-700">Remarks</label>
-                            <textarea id="remarks" name="remarks" rows="5" placeholder="Add remarks..." class="min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none"></textarea>
+                            <textarea id="remarks" name="remarks" rows="5" placeholder="Add remarks..." class="min-h-32 w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none"><?= htmlspecialchars($values['remarks'] ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -175,7 +265,8 @@ $values = $_POST;
             toastTimer = setTimeout(() => toggleToast(toast, false), 3000);
         }
 
-        function showSuccessToast() {
+        function showSuccessToast(message = 'Facility added successfully!') {
+            document.getElementById('toast-success-message').textContent = message;
             toggleToast(successToast, true);
             clearTimeout(successToastTimer);
             successToastTimer = setTimeout(() => toggleToast(successToast, false), 3000);
@@ -183,11 +274,6 @@ $values = $_POST;
 
         closeToast.addEventListener('click', () => toggleToast(toast, false));
         closeSuccessToast.addEventListener('click', () => toggleToast(successToast, false));
-
-        if (sessionStorage.getItem('facilityAddedToast') === 'true') {
-            sessionStorage.removeItem('facilityAddedToast');
-            showSuccessToast();
-        }
 
         facilityForm.addEventListener('submit', event => {
             event.preventDefault();
@@ -211,7 +297,8 @@ $values = $_POST;
         });
 
         confirmFacility.addEventListener('click', () => {
-            sessionStorage.setItem('facilityAddedToast', 'true');
+            confirmFacility.disabled = true;
+            confirmFacility.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
             facilityForm.submit();
         });
 

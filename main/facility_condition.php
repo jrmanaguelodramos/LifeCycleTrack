@@ -1,23 +1,143 @@
 <?php
 require_once __DIR__ . '/_app.php';
-$search = trim((string)($_GET['search'] ?? ''));
-$filterCondition = trim((string)($_GET['condition'] ?? ''));
-
-$conditionAssets = facility_condition(
-    $pdo,
-    $search,
-    $filterCondition
-);
-require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_login();
+
 if (!isset($_SESSION['access_token'])) {
     header("Location: ../auth/login.php");
     exit;
 }
+
+$actor = $_SESSION['user']['email']
+    ?? $_SESSION['email']
+    ?? $_SESSION['username']
+    ?? 'unknown';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    $facilityId = (int) ($input['facility_id'] ?? 0);
+    $condition  = (string) ($input['condition'] ?? '');
+    $status     = trim((string) ($input['status'] ?? ''));
+    $notes      = trim((string) ($input['notes'] ?? ''));
+
+    $allowedStatuses = [
+        'Serviceable (functioning)',
+        'Unserviceable: for maintenance',
+        'Unserviceable: for repair',
+        'Unserviceable: for inspection',
+        'Beyond repair (irreparable)',
+        'Subject for disposal or condemnation',
+        'Disposed',
+    ];
+
+    if (
+        $facilityId <= 0 ||
+        !in_array($condition, ['Good', 'Fair', 'Poor'], true) ||
+        !in_array($status, $allowedStatuses, true)
+    ) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Invalid input.']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $check = $pdo->prepare('SELECT 1 FROM facilities WHERE id = :id');
+        $check->execute([':id' => $facilityId]);
+        if (!$check->fetchColumn()) {
+            throw new RuntimeException('Facility not found.');
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO facility_condition_assessments
+                (facility_id, condition, status, notes, assessed_by)
+             VALUES (:id, :condition, :status, :notes, :by)'
+        );
+        $stmt->execute([
+            ':id'        => $facilityId,
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':notes'     => $notes !== '' ? $notes : null,
+            ':by'        => $actor,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'UPDATE facilities
+                SET condition   = :condition,
+                    status      = :status,
+                    disposed_at = CASE
+                                    WHEN CAST(:status2 AS text) = \'Disposed\'
+                                    THEN COALESCE(disposed_at, now())
+                                    ELSE disposed_at
+                                  END,
+                    updated_at  = now()
+              WHERE id = :id'
+        );
+        $stmt->execute([
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':status2'   => $status,
+            ':id'        => $facilityId,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO activity_log (facility_id, action, details, actor)
+             VALUES (:id, :action, :details, :actor)'
+        );
+        $stmt->execute([
+            ':id'      => $facilityId,
+            ':action'  => 'condition_assessment',
+            ':details' => "Condition: {$condition}; Status: {$status}",
+            ':actor'   => $actor,
+        ]);
+
+        $pdo->commit();
+
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Facility assessment save failed: ' . $ex->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Unable to save the assessment.']);
+    }
+    exit;
+}
+
+function load_facility_assessments(PDO $pdo): array
+{
+    $sql = "
+        SELECT
+            f.id,
+            f.name,
+            f.condition,
+            f.status,
+            f.image_url,
+            COALESCE(
+                (SELECT a.notes
+                   FROM facility_condition_assessments a
+                  WHERE a.facility_id = f.id
+                  ORDER BY a.assessed_at DESC, a.id DESC
+                  LIMIT 1),
+                f.remarks
+            ) AS assessment_notes
+        FROM facilities f
+        ORDER BY f.id ASC
+    ";
+
+    return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$conditionAssets = load_facility_assessments($pdo);
 ?>
 
 <!DOCTYPE html>
@@ -53,6 +173,14 @@ if (!isset($_SESSION['access_token'])) {
             visibility: visible;
             pointer-events: auto;
         }
+
+        #confirmModal button:disabled {
+            cursor: not-allowed;
+        }
+
+        #confirmModal #confirmfacilitySave:disabled {
+            background-color: #103F6C;
+        }
     </style>
 </head>
 
@@ -62,7 +190,6 @@ if (!isset($_SESSION['access_token'])) {
     <main class="ml-64 p-8">
         <div class="condition-layout flex w-full items-stretch gap-5">
 
-            <!-- Left panel -->
             <div class="condition-left flex w-3/5 min-w-0 flex-col overflow-hidden">
                 <h1 class="text-3xl font-bold">Facility Condition Assessment</h1>
                 <p class="mb-1 mt-2 text-gray-700">
@@ -71,7 +198,6 @@ if (!isset($_SESSION['access_token'])) {
 
                 <p id="status" class="sr-only" aria-live="polite"></p>
 
-                <!-- Search and filter -->
                 <div class="flex flex-wrap items-end gap-4 p-5">
                     <div class="w-full max-w-sm">
                         <div class="relative flex items-center">
@@ -101,7 +227,6 @@ if (!isset($_SESSION['access_token'])) {
                     </div>
                 </div>
 
-                <!-- Facility table -->
                 <div class="condition-table-container">
                     <table class="condition-table">
                         <thead>
@@ -118,8 +243,9 @@ if (!isset($_SESSION['access_token'])) {
                                 <tr
                                     data-asset-id="<?= (int) $asset['id'] ?>"
                                     data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
-                                    data-status="">
-                                    <td><?= str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                    data-status="<?= e($asset['status'] ?? '') ?>"
+                                    data-image="<?= e($asset['image_url'] ?? '') ?>">
+                                    <td><?= 'FA-' . str_pad((string) $asset['id'], 3, '0', STR_PAD_LEFT) ?></td>
 
                                     <td><?= e($asset['name']) ?></td>
 
@@ -137,7 +263,7 @@ if (!isset($_SESSION['access_token'])) {
                                         </button>
 
                                         <a
-                                            href="viewfacility.php?id=<?= (int) $asset['id'] ?>"
+                                           href="viewfacility.php?id=<?= (int) $asset['id'] ?>"
                                             class="view-button view-button-action">
                                             <i class="fa-solid fa-eye"></i>
                                             View
@@ -153,7 +279,6 @@ if (!isset($_SESSION['access_token'])) {
                     </p>
                 </div>
 
-                <!-- Pagination -->
                 <div class="pagination flex-shrink-0" id="pagination">
                     <button type="button" class="pagination-btn" id="prevPage">
                         <i class="fa-solid fa-chevron-left"></i> Previous
@@ -167,7 +292,6 @@ if (!isset($_SESSION['access_token'])) {
                 </div>
             </div>
 
-            <!-- Right panel -->
             <div class="assessment-panel flex w-2/5 min-w-0 flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
                 <h2 class="rounded-t-xl bg-[#155B92] pb-4 pl-4 pt-3 text-xl font-semibold text-white">
                     Facility Details
@@ -284,38 +408,36 @@ if (!isset($_SESSION['access_token'])) {
         </div>
     </main>
 
-    <!-- Confirmation modal -->
     <div id="confirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-4">
         <div class="w-full max-w-md rounded-xl bg-white p-6 text-center shadow-xl">
             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
                 <i class="fa-solid fa-circle-question text-3xl text-[#155B92]"></i>
             </div>
 
-            <h2 class="mb-2 text-xl font-bold text-gray-800">Save Changes</h2>
+            <h2 class="mb-2 text-xl font-bold text-gray-800">Confirm Changes</h2>
 
-            <p class="mb-6 text-sm text-gray-600">
-                Are you sure you want to save the changes to this facility?
+            <p class="mb-6 text-sm text-gray-500">
+                Are you sure you want to save these facility changes?
             </p>
 
             <div class="flex justify-center gap-3">
                 <button
                     type="button"
                     id="cancelfacilityConfirm"
-                    class="rounded-lg border border-slate-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Cancel
+                    class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                    <i class="fa-solid fa-xmark mr-1"></i>Cancel
                 </button>
 
                 <button
                     type="button"
                     id="confirmfacilitySave"
-                    class="cursor-pointer rounded-lg bg-[#155B92] px-5 py-2 text-sm text-white hover:bg-[#10456f]">
-                    Yes, Save
+                    class="cursor-pointer rounded-lg bg-[#15588F] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#103F6C]">
+                    <i class="fa-solid fa-check mr-1"></i>Yes, Save
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Warning toast -->
     <div
         id="toast-warning"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-red-200 bg-white p-4 text-gray-700 shadow-lg"
@@ -338,7 +460,6 @@ if (!isset($_SESSION['access_token'])) {
         </button>
     </div>
 
-    <!-- Success toast -->
     <div
         id="toast-success"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-green-200 bg-white p-4 text-gray-700 shadow-lg"
@@ -361,7 +482,6 @@ if (!isset($_SESSION['access_token'])) {
         </button>
     </div>
 
-    <!-- Danger toast -->
     <div
         id="toast-danger"
         class="toast-notification fixed right-5 top-5 z-[100] flex w-full max-w-sm items-center rounded-lg border border-red-200 bg-white p-4 text-gray-700 shadow-lg"
@@ -393,6 +513,7 @@ if (!isset($_SESSION['access_token'])) {
             const emptyState = document.getElementById("emptyState");
             const facilityId = document.getElementById("id");
             const facilityName = document.getElementById("name");
+            const facilityImage = document.getElementById("image");
             const panelCondition = document.getElementById("panelCondition");
             const notes = document.getElementById("notes");
             const equipStatus = document.getElementById("equipStatus");
@@ -404,6 +525,7 @@ if (!isset($_SESSION['access_token'])) {
             const confirmModal = document.getElementById("confirmModal");
             const cancelSave = document.getElementById("cancelfacilityConfirm");
             const confirmSave = document.getElementById("confirmfacilitySave");
+            const confirmSaveDefaultHtml = confirmSave.innerHTML;
             const rows = Array.from(table.querySelectorAll("tbody tr"));
 
             const rowsPerPage = 10;
@@ -411,8 +533,8 @@ if (!isset($_SESSION['access_token'])) {
 
             let currentPage = 1;
             let selectedRow = null;
+            let isSaving = false;
 
-            // Display a toast notification.
             function showToast(type, message) {
                 const toast = document.getElementById("toast-" + type);
                 const messageElement = document.getElementById("toast-" + type + "-message");
@@ -426,14 +548,12 @@ if (!isset($_SESSION['access_token'])) {
 
                 messageElement.textContent = message;
 
-                // Close other visible toast notifications.
                 document.querySelectorAll(".toast-notification.show").forEach(item => {
                     if (item !== toast) {
                         item.classList.remove("show");
                     }
                 });
 
-                // Display the selected toast.
                 toast.classList.add("show");
 
                 toastTimers[type] = setTimeout(() => {
@@ -441,7 +561,6 @@ if (!isset($_SESSION['access_token'])) {
                 }, 3000);
             }
 
-            // Hide a toast notification.
             function hideToast(type) {
                 const toast = document.getElementById("toast-" + type);
 
@@ -451,19 +570,16 @@ if (!isset($_SESSION['access_token'])) {
                 toast.classList.remove("show");
             }
 
-            // Close toast when the X button is clicked.
             document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
                 button.addEventListener("click", () => {
                     hideToast(button.dataset.dismissToast);
                 });
             });
 
-            // Get the current condition from a table row.
             function getCondition(row) {
                 return row.querySelector(".condition")?.textContent.trim() || "";
             }
 
-            // Update the condition badge in the table.
             function updateCondition(row, value) {
                 const cells = row.querySelectorAll("td");
                 const badge = document.createElement("span");
@@ -478,7 +594,6 @@ if (!isset($_SESSION['access_token'])) {
                 cells[2].replaceChildren(badge);
             }
 
-            // Open a facility in the assessment panel.
             function openFacility(row) {
                 emptyState.hidden = true;
                 form.hidden = false;
@@ -494,6 +609,7 @@ if (!isset($_SESSION['access_token'])) {
 
                 notes.value = row.dataset.notes || "";
                 equipStatus.value = row.dataset.status || "";
+                facilityImage.src = row.dataset.image || "../img/logo.png";
 
                 const radio = form.querySelector(
                     'input[name="condition"][value="' + condition + '"]'
@@ -510,20 +626,12 @@ if (!isset($_SESSION['access_token'])) {
                     cells[0].textContent.trim() + " selected.";
             }
 
-            // Edit and View actions.
             rows.forEach(row => {
                 row.querySelector(".edit-button")?.addEventListener("click", () => {
                     openFacility(row);
                 });
-
-                row.querySelector(".view-button-action")?.addEventListener("click", event => {
-                    event.preventDefault();
-                    openFacility(row);
-                    status.textContent = "Displaying facility details.";
-                });
             });
 
-            // Filter rows using the search input and condition dropdown.
             function getFilteredRows() {
                 const search = searchInput.value.trim().toLowerCase();
                 const selectedCondition = conditionFilter.value.toLowerCase();
@@ -545,7 +653,6 @@ if (!isset($_SESSION['access_token'])) {
                 });
             }
 
-            // Render the table and pagination.
             function renderTable() {
                 const filteredRows = getFilteredRows();
                 const totalPages = Math.max(
@@ -606,13 +713,21 @@ if (!isset($_SESSION['access_token'])) {
                     "pointer";
             }
 
-            // Close the save confirmation modal.
             function closeConfirmModal() {
+                if (isSaving) return; 
                 confirmModal.classList.add("hidden");
                 confirmModal.classList.remove("flex");
             }
 
-            // Validate the form before showing the confirmation modal.
+            function setSaving(saving) {
+                isSaving = saving;
+                confirmSave.disabled = saving;
+                cancelSave.disabled = saving;
+                confirmSave.innerHTML = saving ?
+                    '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...' :
+                    confirmSaveDefaultHtml;
+            }
+
             form.addEventListener("submit", event => {
                 event.preventDefault();
 
@@ -638,8 +753,9 @@ if (!isset($_SESSION['access_token'])) {
 
             cancelSave.addEventListener("click", closeConfirmModal);
 
-            // Save the assessment to the current table row.
-            confirmSave.addEventListener("click", () => {
+            confirmSave.addEventListener("click", async () => {
+                if (isSaving) return;
+
                 if (!selectedRow) {
                     closeConfirmModal();
                     showToast("danger", "No facility is selected.");
@@ -656,33 +772,56 @@ if (!isset($_SESSION['access_token'])) {
                     return;
                 }
 
-                updateCondition(selectedRow, selectedRadio.value);
+                setSaving(true);
 
-                selectedRow.dataset.notes = notes.value;
-                selectedRow.dataset.status = equipStatus.value;
+                try {
+                    const response = await fetch(window.location.pathname, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            facility_id: selectedRow.dataset.assetId,
+                            condition: selectedRadio.value,
+                            status: equipStatus.value,
+                            notes: notes.value
+                        })
+                    });
 
-                panelCondition.textContent =
-                    "Current condition: " + selectedRadio.value;
+                    const result = await response.json().catch(() => ({}));
 
-                const savedName = facilityName.textContent;
+                    if (!response.ok || !result.ok) {
+                        throw new Error(result.message || "Unable to save the assessment.");
+                    }
 
-                closeConfirmModal();
+                    updateCondition(selectedRow, selectedRadio.value);
 
-                status.textContent = "Assessment updated for " + savedName + ".";
+                    selectedRow.dataset.notes = notes.value;
+                    selectedRow.dataset.status = equipStatus.value;
 
-                renderTable();
+                    panelCondition.textContent =
+                        "Current condition: " + selectedRadio.value;
 
-                showToast("success", "Facility condition saved successfully.");
+                    const savedName = facilityName.textContent;
+
+                    status.textContent = "Assessment updated for " + savedName + ".";
+
+                    renderTable();
+                    showToast("success", "Facility condition saved successfully.");
+                } catch (error) {
+                    showToast("danger", error.message);
+                } finally {
+                    setSaving(false);
+                    closeConfirmModal();
+                }
             });
 
-            // Close the modal when clicking outside it.
             confirmModal.addEventListener("click", event => {
                 if (event.target === confirmModal) {
                     closeConfirmModal();
                 }
             });
 
-            // Close the modal using Escape.
             document.addEventListener("keydown", event => {
                 if (
                     event.key === "Escape" &&
@@ -692,19 +831,16 @@ if (!isset($_SESSION['access_token'])) {
                 }
             });
 
-            // Search.
             searchInput.addEventListener("input", () => {
                 currentPage = 1;
                 renderTable();
             });
 
-            // Condition filter.
             conditionFilter.addEventListener("change", () => {
                 currentPage = 1;
                 renderTable();
             });
 
-            // Previous page.
             prevButton.addEventListener("click", () => {
                 if (currentPage > 1) {
                     currentPage--;
@@ -712,7 +848,6 @@ if (!isset($_SESSION['access_token'])) {
                 }
             });
 
-            // Next page.
             nextButton.addEventListener("click", () => {
                 const totalPages = Math.ceil(
                     getFilteredRows().length / rowsPerPage
@@ -724,7 +859,6 @@ if (!isset($_SESSION['access_token'])) {
                 }
             });
 
-            // Initial table rendering.
             renderTable();
         });
     </script>

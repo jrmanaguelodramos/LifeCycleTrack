@@ -7,8 +7,10 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 require_once __DIR__ . '/../config/database.php';
 
-function e(?string $value): string {
-    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
+if (!function_exists('e')) {
+    function e($value) {
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
 }
 
 function redirect(string $url): never {
