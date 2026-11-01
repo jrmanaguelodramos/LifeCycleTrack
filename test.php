@@ -15,7 +15,7 @@ print_r(PDO::getAvailableDrivers());
 
 echo '</pre>';
 
-require_once __DIR__ . '/_app.php';
+require_once __DIR__ . '/main/_app.php';
 require_login();
 
 try {

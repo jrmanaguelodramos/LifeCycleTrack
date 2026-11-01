@@ -1,34 +1,78 @@
 <?php
 require_once __DIR__ . '/_app.php';
-require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+require_login();
 
 if (!isset($_SESSION['access_token'])) {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$facilityId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 1;
+$facilityId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if (!$facilityId || $facilityId < 1) {
+    header("Location: facilities_list.php");
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'SELECT id, name, condition, status, location, category, remarks, image_url
+       FROM facilities
+      WHERE id = :id'
+);
+$stmt->execute([':id' => $facilityId]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) {
+    http_response_code(404);
+    header("Location: facilities_list.php");
+    exit;
+}
+
+$description = trim((string) ($row['remarks'] ?? ''));
+
+if ($description === '') {
+    $parts = array_filter([
+        trim((string) ($row['category'] ?? '')),
+        trim((string) ($row['location'] ?? '')),
+    ]);
+    $description = $parts ? implode(' • ', $parts) : 'No description available.';
+}
 
 $facility = [
-    'id' => $facilityId, 'name' => 'Reception Hall', 'condition' => 'Good',
-    'status' => 'Serviceable (functioning)',
-    'description' => 'Main academic building used for classrooms and administrative offices.',
+    'id'          => (int) $row['id'],
+    'name'        => $row['name'],
+    'condition'   => $row['condition'],
+    'status'      => $row['status'],
+    'description' => $description,
+    'image_url'   => $row['image_url'],
 ];
 
-$logs = [
-    ['date' => '2026-05-15', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Routine inspection completed. Building is in good conditioaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaan.'],
-    ['date' => '2026-02-20', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Minor lighting issues addressed. Classrooms remain usable conditioaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaan.'],
-    ['date' => '2025-11-12', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance', 'remarks' => 'Minor ceiling leaks observed in selected areas.'],
-    ['date' => '2025-08-08', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance', 'remarks' => 'Several wall sections require repainting and minor repairs.'],
-    ['date' => '2025-05-14', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Routine inspection. Electrical fixtures are functioning properly.'],
-    ['date' => '2025-02-03', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Minor maintenance completed in hallways and classrooms.'],
-    ['date' => '2024-11-10', 'condition' => 'Poor', 'status' => 'Unserviceable: for repair', 'remarks' => 'Roof leakage and damaged ceiling sections require repair.'],
-    ['date' => '2024-08-05', 'condition' => 'Good', 'status' => 'Serviceable (functioning)', 'remarks' => 'Initial inspection completed. Facility was suitable for use.'],
-];
+$stmt = $pdo->prepare(
+    "SELECT
+        a.id,
+        to_char(a.assessed_at AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') AS date,
+        a.condition,
+        a.status,
+        a.notes AS remarks
+       FROM facility_condition_assessments a
+      WHERE a.facility_id = :id
+      ORDER BY a.assessed_at DESC, a.id DESC"
+);
+$stmt->execute([':id' => $facilityId]);
+
+$logs = array_map(static function (array $r): array {
+    return [
+        'date'      => (string) $r['date'],
+        'condition' => (string) $r['condition'],
+        'status'    => (string) ($r['status'] ?? ''),
+        'remarks'   => (string) ($r['remarks'] ?? ''),
+    ];
+}, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
 if (!function_exists('ev')) {
     function ev($value): string {
@@ -42,8 +86,6 @@ if (!function_exists('facility_badge')) {
         return '<span class="cl-badge cl-' . ev($class) . '"><i></i>' . ev($condition) . '</span>';
     }
 }
-
-usort($logs, fn($a, $b) => strcmp($b['date'], $a['date']));
 
 foreach ($logs as $i => &$log) {
     $older = $logs[$i + 1] ?? null;
@@ -91,7 +133,7 @@ $statusOptions = [
                 <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
                     <li><a href="facilities_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-regular fa-building mr-2"></i>Facilities List</a></li>
                     <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
-                    <li><a href="viewfacility.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> Information</a></li>
+                   <li><a href="viewfacility.php?id=<?= (int)$facility['id'] ?>" class="block max-w-[200px] no-underline hover:underline mr-2 truncate">Information</a></li>
                     <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
                     <li aria-current="page" class="font-medium text-blue-900 ">Condition Logs</li>
                 </ol>
@@ -104,10 +146,10 @@ $statusOptions = [
             <div class="cl-wrap">
                 <div class="cl-head">
                     <div class="cl-who">
-                        <div class="cl-img"><img src="../img/logo.png" alt="<?= ev($facility['name']) ?>"></div>
+                        <div class="cl-img"><img src="<?= ev($facility['image_url'] ?: '../img/logo.png') ?>" alt="<?= ev($facility['name']) ?>"></div>
                         <div>
                             <h2><?= ev($facility['name']) ?></h2>
-                            <p class="cl-id"><?= str_pad((string) $facility['id'], 4, '0', STR_PAD_LEFT) ?></p>
+                            <p class="cl-id"><?= 'FA-' . str_pad((string) $facility['id'], 3, '0', STR_PAD_LEFT) ?></p>
                             <?= facility_badge($facility['condition']) ?>
                             <p class="cl-desc"><?= ev($facility['description']) ?></p>
                         </div>

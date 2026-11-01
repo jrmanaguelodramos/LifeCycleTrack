@@ -6,21 +6,92 @@ $hasMaintenance = analytics_table_exists($pdo, 'maintenance_records');
 $rows = [];
 $queryOk = true;
 if ($hasMaintenance) {
-    $where = ['((m.due_at::date BETWEEN :due_from AND :due_to) OR (m.completed_at::date BETWEEN :completed_from AND :completed_to) OR (m.created_at::date BETWEEN :created_from AND :created_to))'];
-    $params = [':due_from' => $analyticsFrom, ':due_to' => $analyticsTo, ':completed_from' => $analyticsFrom, ':completed_to' => $analyticsTo, ':created_from' => $analyticsFrom, ':created_to' => $analyticsTo];
-    if ($analyticsType !== 'all') {
-        $where[] = 'a.asset_type = :asset_type';
-        $params[':asset_type'] = $analyticsType;
+    $where = [
+        '((m.due_at::date BETWEEN :due_from AND :due_to)
+      OR (m.completed_at::date BETWEEN :completed_from AND :completed_to)
+      OR (m.created_at::date BETWEEN :created_from AND :created_to))'
+    ];
+
+    $params = [
+        ':due_from' => $analyticsFrom,
+        ':due_to' => $analyticsTo,
+        ':completed_from' => $analyticsFrom,
+        ':completed_to' => $analyticsTo,
+        ':created_from' => $analyticsFrom,
+        ':created_to' => $analyticsTo,
+    ];
+
+    if ($analyticsType === 'equipment') {
+        $where[] = 'e.id IS NOT NULL';
+    } elseif ($analyticsType === 'facility') {
+        // A maintenance row can be associated with a facility through its equipment.
+        $where[] = 'f.id IS NOT NULL';
     }
+
     if ($analyticsCondition !== 'all') {
-        $where[] = 'a.condition = :condition';
+        $where[] = 'COALESCE(e.condition, f.condition) = :condition';
         $params[':condition'] = $analyticsCondition;
     }
+
     if ($analyticsSearch !== '') {
-        $where[] = '(COALESCE(a.name, \'\') ILIKE :q1 OR COALESCE(a.location, \'\') ILIKE :q2 OR COALESCE(m.work_order_code, m.external_id, \'\') ILIKE :q3 OR COALESCE(m.failure_cause, \'\') ILIKE :q4)';
-        foreach ([':q1', ':q2', ':q3', ':q4'] as $k) $params[$k] = '%' . $analyticsSearch . '%';
+        $where[] = "(
+        COALESCE(e.name, '') ILIKE :q1
+        OR COALESCE(f.name, '') ILIKE :q2
+        OR COALESCE(e.location, f.location, '') ILIKE :q3
+        OR COALESCE(m.work_order_code, m.external_id, '') ILIKE :q4
+        OR COALESCE(m.failure_cause, '') ILIKE :q5
+    )";
+
+        foreach ([':q1', ':q2', ':q3', ':q4', ':q5'] as $key) {
+            $params[$key] = '%' . $analyticsSearch . '%';
+        }
     }
-    $result = analytics_query_or_empty($pdo, "SELECT m.id, m.external_id, m.work_order_code, m.external_asset_tag, m.asset_id, COALESCE(a.name, 'Unlinked asset') AS asset_name, COALESCE(a.asset_type, 'unknown') AS asset_type, COALESCE(a.location, '—') AS location, m.maintenance_type, m.status, m.priority, m.due_at, m.started_at, m.completed_at, m.labor_cost, m.parts_cost, COALESCE(m.labor_cost,0)+COALESCE(m.parts_cost,0) AS total_cost, m.failure_cause, m.created_at FROM maintenance_records m LEFT JOIN assets a ON a.id=m.asset_id WHERE " . implode(' AND ', $where) . ' ORDER BY CASE lower(m.priority) WHEN \'critical\' THEN 1 WHEN \'high\' THEN 2 WHEN \'medium\' THEN 3 ELSE 4 END, m.due_at NULLS LAST, m.created_at DESC', $params);
+
+    $sql = "
+    SELECT
+        m.id,
+        m.external_id,
+        m.work_order_code,
+        m.external_asset_tag,
+        m.equipment_id AS asset_id,
+        CASE
+            WHEN e.id IS NOT NULL THEN 'equipment'
+            WHEN f.id IS NOT NULL THEN 'facility'
+            ELSE 'unknown'
+        END AS asset_type,
+        CASE
+            WHEN e.id IS NOT NULL AND f.name IS NOT NULL
+                THEN e.name || ' — ' || f.name
+            ELSE COALESCE(e.name, f.name, 'Unlinked asset')
+        END AS asset_name,
+        COALESCE(e.location, f.location, '—') AS location,
+        m.maintenance_type,
+        m.status,
+        m.priority,
+        m.due_at,
+        m.started_at,
+        m.completed_at,
+        m.labor_cost,
+        m.parts_cost,
+        COALESCE(m.labor_cost, 0) + COALESCE(m.parts_cost, 0) AS total_cost,
+        m.failure_cause,
+        m.created_at
+    FROM public.maintenance_records m
+    LEFT JOIN public.equipment e ON e.id = m.equipment_id
+    LEFT JOIN public.facilities f ON f.id = e.facility_id
+    WHERE " . implode(' AND ', $where) . "
+    ORDER BY
+        CASE lower(m.priority)
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'medium' THEN 3
+            ELSE 4
+        END,
+        m.due_at NULLS LAST,
+        m.created_at DESC
+";
+
+    $result = analytics_query_or_empty($pdo, $sql, $params);
     $rows = $result['rows'];
     $queryOk = $result['ok'];
 }
@@ -66,14 +137,14 @@ analytics_filter_form($analyticsFrom, $analyticsTo, $analyticsType, $analyticsCo
 if (!$hasMaintenance) analytics_notice('Maintenance analytics are waiting for data integration. Run migrations/analytics_extensions.sql to create the reporting mirror, then sync work-order data from the Maintenance & Operations subsystem. This report does not invent sample maintenance records.', 'warning');
 elseif (!$queryOk) analytics_notice('Maintenance records could not be queried. Check the database schema and application logs.', 'error');
 elseif (!$rows) analytics_notice('No maintenance records match these filters. Verify that the maintenance subsystem has synchronized records for this period.', 'info');
+if ($avgRepair !== null) analytics_notice('Mean recorded repair duration is ' . number_format($avgRepair, 1) . ' hours across completed work orders with both start and completion timestamps.', 'info');
+if (count($overdue) > 0) analytics_notice(count($overdue) . ' work orders are overdue. Review the overdue list by priority and age, then assign a responsible owner and target completion date.', 'warning');
 echo '<section class="analytics-metrics">';
 analytics_metric('Work orders in period', number_format(count($rows)), 'Linked maintenance records returned', '▤');
 analytics_metric('Overdue open work', number_format(count($overdue)), 'Open records past due date', '⚠');
 analytics_metric('Preventive compliance', $pmRate === null ? 'N/A' : number_format($pmRate, 1) . '%', $pmRate === null ? 'No preventive tasks due in this period' : count($pmOnTime) . ' completed on time of ' . count($pmDue) . ' due', '✓');
 analytics_metric('Recorded maintenance cost', analytics_money($totalCost), $costIncomplete ? $costIncomplete . ' records have no cost data; totals are incomplete' : 'Sum of reported labor and parts costs', '₱');
 echo '</section>';
-if ($avgRepair !== null) analytics_notice('Mean recorded repair duration is ' . number_format($avgRepair, 1) . ' hours across completed work orders with both start and completion timestamps.', 'info');
-if (count($overdue) > 0) analytics_notice(count($overdue) . ' work orders are overdue. Review the overdue list by priority and age, then assign a responsible owner and target completion date.', 'warning');
 echo '<section class="analytics-grid">';
 analytics_chart_panel('Work order status', 'Distribution of linked records by current status.', 'maintenanceStatusChart');
 analytics_chart_panel('Maintenance type', 'Preventive, corrective, and inspection work.', 'maintenanceTypeChart');

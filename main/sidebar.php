@@ -1,5 +1,53 @@
 <?php
-    $currentPage = basename($_SERVER['PHP_SELF']);
+$currentPage = basename($_SERVER['PHP_SELF']);
+
+require_once __DIR__ . '/_app.php';
+
+$displayName = 'User';
+$userEmail = '';
+
+if (!empty($_SESSION['access_token'])) {
+    $supabaseUrl = rtrim($_ENV['SUPABASE_URL'] ?? getenv('SUPABASE_URL') ?: '', '/');
+    $supabaseKey = $_ENV['SUPABASE_KEY'] ?? getenv('SUPABASE_KEY') ?: '';
+
+    if ($supabaseUrl !== '' && $supabaseKey !== '') {
+        $ch = curl_init($supabaseUrl . '/auth/v1/user');
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $supabaseKey,
+                'Authorization: Bearer ' . $_SESSION['access_token'],
+                'Content-Type: application/json'
+            ],
+            CURLOPT_TIMEOUT => 10
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        curl_close($ch);
+
+        if ($response !== false && $httpCode === 200) {
+            $user = json_decode($response, true);
+
+            $displayName = trim(
+                $user['user_metadata']['display_name']
+                ?? $user['user_metadata']['full_name']
+                ?? $user['user_metadata']['name']
+                ?? ''
+            );
+
+            $userEmail = $user['email'] ?? '';
+
+            if ($displayName === '') {
+                $displayName = $userEmail !== ''
+                    ? $userEmail
+                    : 'User';
+            }
+        }
+    }
+}
 ?>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
@@ -182,10 +230,14 @@
                 <i class="fa-solid fa-user"></i>
             </div>
 
+     
             <div class="profile-info">
-                <strong>Mang Juan</strong>
-                <span>Admin</span>
+                <strong>
+                    <?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?>
+                </strong>
+                <span>Secretary</span>
             </div>
+
 
             <i id="profile-arrow"
             class="fa-solid fa-chevron-up profile-arrow">
@@ -202,10 +254,10 @@
             <h2 class="mb-2 text-xl font-bold text-gray-800">Confirm Logout</h2>
             <p class="mb-6 text-sm text-gray-500">Are you sure you want to log out?</p>
             <div class="flex justify-center gap-3">
-                <button type="button" onclick="closeLogoutModal()" class="cursor-pointer rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                <button id="logoutCancelBtn" type="button" onclick="closeLogoutModal()" class="cursor-pointer rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50">
                     <i class="fa-solid fa-xmark mr-1"></i> Cancel
                 </button>
-                <button type="button" onclick="confirmLogout()" class="cursor-pointer rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700">
+                <button id="logoutConfirmBtn" type="button" onclick="confirmLogout()" class="cursor-pointer rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-70">
                     <i class="fa-solid fa-right-from-bracket mr-1"></i> Logout
                 </button>
             </div>
@@ -256,30 +308,63 @@
             profileArrow.classList.toggle('rotate');
 
         });
+        
+        const logoutModal      = document.getElementById('logoutModal');
+        const logoutCancelBtn  = document.getElementById('logoutCancelBtn');
+        const logoutConfirmBtn = document.getElementById('logoutConfirmBtn');
+        let isLoggingOut = false;
 
-         function openLogoutModal(event) {
+        const logoutConfirmDefault = logoutConfirmBtn.innerHTML;
+
+        function resetLogoutModal() {
+            isLoggingOut = false;
+            logoutConfirmBtn.innerHTML = logoutConfirmDefault;
+            logoutConfirmBtn.disabled = false;
+            logoutCancelBtn.disabled = false;
+        }
+
+        function openLogoutModal(event) {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
 
-            const modal = document.getElementById('logoutModal');
-
-            if (modal) {
-                modal.style.display = 'flex';
+            if (logoutModal) {
+                resetLogoutModal();
+                logoutModal.style.display = 'flex';
             }
         }
 
         function closeLogoutModal() {
-            const modal = document.getElementById('logoutModal');
+            if (isLoggingOut) {
+                return;
+            }
 
-            if (modal) {
-                modal.style.display = 'none';
+            if (logoutModal) {
+                logoutModal.style.display = 'none';
             }
         }
 
         function confirmLogout() {
-            window.location.href = '../auth/logout.php';
+            if (isLoggingOut) {
+                return;
+            }
+            isLoggingOut = true;
+
+            logoutConfirmBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Logging out...';
+            logoutConfirmBtn.disabled = true;
+            logoutCancelBtn.disabled = true;
+
+            setTimeout(function () {
+                window.location.href = '../auth/logout.php';
+            }, 400);
         }
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                resetLogoutModal();
+                logoutModal.style.display = 'none';
+            }
+        });
 
     </script>

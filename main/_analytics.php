@@ -6,30 +6,91 @@ require_login();
 
 function analytics_table_exists(PDO $pdo, string $table): bool
 {
-    $allowed = ['assets', 'condition_assessments', 'maintenance_records', 'downtime_events', 'lifecycle_events'];
+    $allowed = [
+        'facilities',
+        'equipment',
+        'facility_condition_assessments',
+        'equipment_condition_assessments',
+        'maintenance_records',
+        'downtime_events',
+        'lifecycle_events',
+        'activity_log',
+    ];
+
     if (!in_array($table, $allowed, true)) {
         return false;
     }
+
     $stmt = $pdo->prepare('SELECT to_regclass(:relation) IS NOT NULL');
     $stmt->execute([':relation' => 'public.' . $table]);
+
     return (bool)$stmt->fetchColumn();
 }
 
 function analytics_column_exists(PDO $pdo, string $table, string $column): bool
 {
     $allowed = [
-        'assets' => ['asset_tag', 'lifecycle_stage', 'useful_life_years', 'acquisition_cost', 'replacement_cost_estimate', 'criticality', 'warranty_expiry', 'retired_at', 'disposed_at', 'department'],
-        'maintenance_records' => ['id'],
-        'downtime_events' => ['id'],
+        'facilities' => [
+            'id', 'name', 'location', 'category', 'date_acquired',
+            'condition', 'status', 'lifecycle_stage', 'useful_life_years',
+            'acquisition_cost', 'replacement_cost_estimate', 'criticality',
+            'warranty_expiry', 'department', 'retired_at', 'disposed_at',
+        ],
+        'equipment' => [
+            'id', 'facility_id', 'name', 'asset_tag', 'brand', 'model',
+            'category', 'location', 'date_acquired', 'condition', 'status',
+            'lifecycle_stage', 'useful_life_years', 'acquisition_cost',
+            'replacement_cost_estimate', 'criticality', 'warranty_expiry',
+            'department', 'retired_at', 'disposed_at',
+        ],
+        'facility_condition_assessments' => [
+            'id', 'facility_id', 'condition', 'status', 'notes',
+            'assessed_by', 'assessed_at',
+        ],
+        'equipment_condition_assessments' => [
+            'id', 'equipment_id', 'condition', 'status', 'notes',
+            'assessed_by', 'assessed_at',
+        ],
+        'maintenance_records' => [
+            'id', 'external_id', 'equipment_id', 'maintenance_type',
+            'status', 'priority', 'due_at', 'started_at', 'completed_at',
+            'labor_cost', 'parts_cost', 'failure_cause',
+        ],
+        'downtime_events' => [
+            'id', 'facility_id', 'equipment_id', 'started_at',
+            'ended_at', 'reason', 'notes',
+        ],
+        'lifecycle_events' => [
+            'id', 'facility_id', 'equipment_id', 'event_type',
+            'event_date', 'details',
+        ],
+        'activity_log' => [
+            'id', 'facility_id', 'equipment_id', 'action',
+            'details', 'actor', 'created_at',
+        ],
     ];
+
     if (!isset($allowed[$table]) || !in_array($column, $allowed[$table], true)) {
         return false;
     }
-    $stmt = $pdo->prepare('SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = :table AND column_name = :column)');
-    $stmt->execute([':table' => $table, ':column' => $column]);
+
+    $stmt = $pdo->prepare(
+        'SELECT EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = :schema
+              AND table_name = :table
+              AND column_name = :column
+        )'
+    );
+    $stmt->execute([
+        ':schema' => 'public',
+        ':table' => $table,
+        ':column' => $column,
+    ]);
+
     return (bool)$stmt->fetchColumn();
 }
-
 function analytics_date(string $value, string $fallback): string
 {
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
@@ -124,7 +185,7 @@ function analytics_filter_form(string $from, string $to, string $type, string $c
 
 function analytics_notice(string $message, string $kind = 'info'): void
 {
-    echo '<div class="analytics-notice ' . e($kind) . '">' . e($message) . '</div>';
+    echo '<strong><div class="analytics-notice ' . e($kind) . '">' . e($message) . '</div></strong>';
 }
 
 function analytics_metric(string $label, string $value, string $note, string $icon = '•'): void

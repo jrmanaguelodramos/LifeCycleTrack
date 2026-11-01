@@ -1,36 +1,79 @@
 <?php
 require_once __DIR__ . '/_app.php';
-require_login();
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+require_login();
 
 if (!isset($_SESSION['access_token'])) {
     header("Location: ../auth/login.php");
     exit;
 }
 
-$equipmentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 1;
+$equipmentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+
+if (!$equipmentId || $equipmentId < 1) {
+    header("Location: equipments_list.php");
+    exit;
+}
+
+$stmt = $pdo->prepare(
+    'SELECT id, name, condition, status, brand, model, category, location, remarks, image_url
+       FROM equipment
+      WHERE id = :id'
+);
+$stmt->execute([':id' => $equipmentId]);
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$row) {
+    header("Location: equipments_list.php");
+    exit;
+}
+
+$description = trim((string) ($row['remarks'] ?? ''));
+
+if ($description === '') {
+    $parts = array_filter([
+        trim((string) ($row['brand'] ?? '')),
+        trim((string) ($row['model'] ?? '')),
+        trim((string) ($row['category'] ?? '')),
+        trim((string) ($row['location'] ?? '')),
+    ]);
+    $description = $parts ? implode(' • ', $parts) : 'No description available.';
+}
 
 $equipment = [
-    'id'          => $equipmentId,
-    'name'        => 'Printer',
-    'condition'   => 'Good',
-    'status'      => 'Serviceable (functioning)',
-    'description' => 'Printer for document printing',
+    'id'          => (int) $row['id'],
+    'name'        => $row['name'],
+    'condition'   => $row['condition'],
+    'status'      => $row['status'],
+    'description' => $description,
+    'image_url'   => $row['image_url'],
 ];
 
-$logs = [
-    ['date' => '2026-05-15', 'condition' => 'Good', 'status' => 'Serviceable (functioning)',        'remarks' => 'Routine inspection. No issues found.'],
-    ['date' => '2026-02-20', 'condition' => 'Good', 'status' => 'Serviceable (functioning)',        'remarks' => 'Paper feed roller replaced. Back to normal use.'],
-    ['date' => '2025-11-12', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance',   'remarks' => 'Paper jams occasionally. Servicing scheduled.'],
-    ['date' => '2025-08-08', 'condition' => 'Fair', 'status' => 'Unserviceable: for maintenance',   'remarks' => 'Ink cartridge nearly empty. Cleaning requested.'],
-    ['date' => '2025-05-14', 'condition' => 'Good', 'status' => 'Serviceable (functioning)',        'remarks' => 'Routine inspection. No issues found.'],
-    ['date' => '2025-02-03', 'condition' => 'Good', 'status' => 'Serviceable (functioning)',        'remarks' => 'Print head replaced and recalibrated.'],
-    ['date' => '2024-11-10', 'condition' => 'Poor', 'status' => 'Unserviceable: for repair',        'remarks' => 'Printer not printing. Sent for repair.'],
-    ['date' => '2024-08-05', 'condition' => 'Good', 'status' => 'Serviceable (functioning)',        'remarks' => 'Newly deployed. Working properly.'],
-];
+$stmt = $pdo->prepare(
+    "SELECT
+        a.id,
+        to_char(a.assessed_at AT TIME ZONE 'Asia/Manila', 'YYYY-MM-DD') AS date,
+        a.condition,
+        a.status,
+        a.notes AS remarks
+       FROM equipment_condition_assessments a
+      WHERE a.equipment_id = :id
+      ORDER BY a.assessed_at DESC, a.id DESC"
+);
+$stmt->execute([':id' => $equipmentId]);
+
+$logs = array_map(static function (array $r): array {
+    return [
+        'date'      => (string) $r['date'],
+        'condition' => (string) $r['condition'],
+        'status'    => (string) ($r['status'] ?? ''),
+        'remarks'   => (string) ($r['remarks'] ?? ''),
+    ];
+}, $stmt->fetchAll(PDO::FETCH_ASSOC));
 
 if (!function_exists('ev')) {
     function ev($value): string
@@ -39,7 +82,14 @@ if (!function_exists('ev')) {
     }
 }
 
-usort($logs, fn($a, $b) => strcmp($b['date'], $a['date']));
+if (!function_exists('badge')) {
+    function badge(string $c): string
+    {
+        $k = strtolower($c);
+        return '<span class="cl-badge cl-' . ev($k) . '"><i></i>' . ev($c) . '</span>';
+    }
+}
+
 foreach ($logs as $i => &$log) {
     $older = $logs[$i + 1] ?? null;
     $log['from'] = $older ? $older['condition'] : null;
@@ -66,12 +116,6 @@ $statusOptions = [
     'Subject for disposal or condemnation',
     'Disposed',
 ];
-
-function badge(string $c): string
-{
-    $k = strtolower($c);
-    return '<span class="cl-badge cl-' . $k . '"><i></i>' . ev($c) . '</span>';
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,7 +142,7 @@ function badge(string $c): string
             <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
                 <li><a href="equipments_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> <i class="fa-solid fa-wrench mr-2"></i>Equipments List</a></li>
                 <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
-                <li><a href="viewequip.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> Information</a></li>
+                <li><a href="viewequip.php?id=<?= (int) $equipment['id'] ?>" class="block max-w-[200px] no-underline hover:underline mr-2 truncate"> Information</a></li>
                 <li aria-hidden="true"><i class="sep fa-solid fa-chevron-right mr-2"></i></li>
                 <li aria-current="page" class="font-medium text-blue-900 ">Condition Logs</li>
             </ol>
@@ -110,10 +154,10 @@ function badge(string $c): string
             <div class="cl-wrap">
                 <div class="cl-head">
                     <div class="cl-who">
-                        <div class="cl-img"><img src="../img/logo.png" alt="<?= ev($equipment['name']) ?>"></div>
+                        <div class="cl-img"><img src="<?= ev($equipment['image_url'] ?: '../img/logo.png') ?>" alt="<?= ev($equipment['name']) ?>"></div>
                         <div>
                             <h2><?= ev($equipment['name']) ?></h2>
-                            <p class="cl-id"><?= str_pad((string) $equipment['id'], 4, '0', STR_PAD_LEFT) ?></p>
+                            <p class="cl-id"><?= 'EQ-' . str_pad((string) $equipment['id'], 3, '0', STR_PAD_LEFT) ?></p>
                             <?= badge($equipment['condition']) ?>
                             <p class="cl-desc"><?= ev($equipment['description']) ?></p>
                         </div>
@@ -189,11 +233,13 @@ function badge(string $c): string
                     <div class="cl-scroll">
                         <table class="cl-table" id="logTable">
                             <thead>
-                              <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-calendar mr-2"></i> Date</div></th>
+                                <tr>
+                                    <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-calendar mr-2"></i> Date</div></th>
                                     <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-shield-halved mr-2"></i> Condition</div></th>
                                     <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-clipboard-check mr-2"></i> Status</div></th>
                                     <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-arrow-right-arrow-left mr-2"></i> Change</div></th>
                                     <th class="text-center"><div class="flex items-center justify-center"><i class="fa-solid fa-message mr-2"></i> Remarks</div></th>
+                                </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($logs as $log): ?>
@@ -240,7 +286,7 @@ function badge(string $c): string
             <p class="cl-modal-text" id="remarksText"></p>
         </div>
     </dialog>
-    
+
     <div id="toast-warning" class="fixed top-5 right-5 z-[100] flex w-full max-w-sm translate-x-[120%] items-center rounded-lg border border-red-200 bg-white p-4 text-gray-700 opacity-0 shadow-lg transition-all duration-300 ease-out" role="alert">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600">
             <i class="fa-solid fa-circle-exclamation text-lg"></i>
@@ -255,7 +301,7 @@ function badge(string $c): string
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-600">
             <i class="fa-solid fa-circle-check text-lg"></i>
         </div>
-        <div id="toast-success-message" class="ml-3 flex-1 text-sm font-medium">Facility assessment saved successfully!</div>
+        <div id="toast-success-message" class="ml-3 flex-1 text-sm font-medium">Equipment assessment saved successfully!</div>
         <button type="button" data-dismiss-toast="success" class="ml-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
             <i class="fa-solid fa-xmark"></i>
         </button>
@@ -373,9 +419,9 @@ function badge(string $c): string
                         r.dataset.remarks
                     ]);
                 });
-                const csv = lines.map(l => l.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\r\n');
+                const csv = '\uFEFF' + lines.map(l => l.map(v => '"' + v.replace(/"/g, '""') + '"').join(',')).join('\r\n');
                 const a = document.createElement('a');
-                a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+                a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
                 a.download = 'condition_history_<?= (int) $equipment['id'] ?>.csv';
                 a.click();
                 URL.revokeObjectURL(a.href);

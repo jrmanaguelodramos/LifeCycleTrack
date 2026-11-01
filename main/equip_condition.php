@@ -1,10 +1,148 @@
 <?php
 require_once __DIR__ . '/_app.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_login();
+
+if (!isset($_SESSION['access_token'])) {
+    header("Location: ../auth/login.php");
+    exit;
+}
+
+$actor = $_SESSION['user']['email']
+    ?? $_SESSION['email']
+    ?? $_SESSION['username']
+    ?? 'unknown';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    $equipmentId = (int) ($input['equipment_id'] ?? 0);
+    $condition   = (string) ($input['condition'] ?? '');
+    $status      = trim((string) ($input['status'] ?? ''));
+    $notes       = trim((string) ($input['notes'] ?? ''));
+
+    $allowedStatuses = [
+        'Serviceable (functioning)',
+        'Unserviceable: for maintenance',
+        'Unserviceable: for repair',
+        'Unserviceable: for inspection',
+        'Beyond repair (irreparable)',
+        'Subject for disposal or condemnation',
+        'Disposed',
+    ];
+
+    if (
+        $equipmentId <= 0 ||
+        !in_array($condition, ['Good', 'Fair', 'Poor'], true) ||
+        !in_array($status, $allowedStatuses, true)
+    ) {
+        http_response_code(422);
+        echo json_encode(['ok' => false, 'message' => 'Invalid input.']);
+        exit;
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $check = $pdo->prepare('SELECT 1 FROM equipment WHERE id = :id');
+        $check->execute([':id' => $equipmentId]);
+        if (!$check->fetchColumn()) {
+            throw new RuntimeException('Equipment not found.');
+        }
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO equipment_condition_assessments
+                (equipment_id, condition, status, notes, assessed_by)
+             VALUES (:id, :condition, :status, :notes, :by)'
+        );
+        $stmt->execute([
+            ':id'        => $equipmentId,
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':notes'     => $notes !== '' ? $notes : null,
+            ':by'        => $actor,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'UPDATE equipment
+                SET condition   = :condition,
+                    status      = :status,
+                    disposed_at = CASE
+                                    WHEN CAST(:status2 AS text) = \'Disposed\'
+                                    THEN COALESCE(disposed_at, now())
+                                    ELSE disposed_at
+                                  END,
+                    updated_at  = now()
+              WHERE id = :id'
+        );
+        $stmt->execute([
+            ':condition' => $condition,
+            ':status'    => $status,
+            ':status2'   => $status,
+            ':id'        => $equipmentId,
+        ]);
+
+        $stmt = $pdo->prepare(
+            'INSERT INTO activity_log (equipment_id, action, details, actor)
+             VALUES (:id, :action, :details, :actor)'
+        );
+        $stmt->execute([
+            ':id'      => $equipmentId,
+            ':action'  => 'condition_assessment',
+            ':details' => "Condition: {$condition}; Status: {$status}",
+            ':actor'   => $actor,
+        ]);
+
+        $pdo->commit();
+
+        echo json_encode(['ok' => true]);
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log('Equipment assessment save failed: ' . $ex->getMessage());
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Unable to save the assessment.']);
+    }
+    exit;
+}
+
+function load_equipment_assessments(PDO $pdo): array
+{
+    $sql = "
+        SELECT
+            q.id,
+            q.name,
+            q.condition,
+            q.status,
+            q.image_url,
+            COALESCE(
+                (SELECT a.notes
+                   FROM equipment_condition_assessments a
+                  WHERE a.equipment_id = q.id
+                  ORDER BY a.assessed_at DESC, a.id DESC
+                  LIMIT 1),
+                q.remarks
+            ) AS assessment_notes
+        FROM equipment q
+        ORDER BY q.id ASC
+    ";
+
+    return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+}
+
+$conditionAssets = load_equipment_assessments($pdo);
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,7 +153,19 @@ require_login();
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/condition.css">
     <link rel="stylesheet" href="../css/equipment_condition.css">
+
+    <style>
+        /* Loading state for the confirm modal buttons */
+        #confirmModal button:disabled {
+            cursor: not-allowed;
+        }
+
+        #confirmModal #confirmequipmentSave:disabled {
+            background-color: #103F6C;
+        }
+    </style>
 </head>
+
 <body>
     <?php include 'sidebar.php'; ?>
 
@@ -48,7 +198,7 @@ require_login();
                 <div class="condition-table-container">
                     <table class="condition-table">
                         <thead>
-                             <tr>
+                            <tr>
                                 <th><i class="fa-solid fa-id-card"></i> ID</th>
                                 <th><i class="fa-solid fa-tag"></i> Name</th>
                                 <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
@@ -56,70 +206,38 @@ require_login();
                             </tr>
                         </thead>
                         <tbody>
-                            <!--sample data lang -->
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0001</td>
-                                <td>Printer</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=1" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0002</td>
-                                <td>Airconditioner</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=2" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Unserviceable: for maintenance">
-                                <td>0003</td>
-                                <td>Generator</td>
-                                <td><span class="condition fair"><span></span>Fair</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=3" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0004</td>
-                                <td>Water Dispenser</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=4" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Unserviceable: for repair">
-                                <td>0005</td>
-                                <td>Grass Cutter</td>
-                                <td><span class="condition poor"><span></span>Poor</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=5" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0006</td>
-                                <td>Computer</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=6" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
-                            <tr data-notes="" data-status="Serviceable (functioning)">
-                                <td>0007</td>
-                                <td>Wheel Barrow</td>
-                                <td><span class="condition good"><span></span>Good</span></td>
-                                <td>
-                                    <button type="button" class="view-button edit-button"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                                    <a href="viewequip.php?id=7" class="view-button view-button-action"><i class="fa-solid fa-eye"></i> View</a>
-                                </td>
-                            </tr>
+                            <?php foreach ($conditionAssets as $asset): ?>
+                                <tr
+                                    data-asset-id="<?= (int) $asset['id'] ?>"
+                                    data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
+                                    data-status="<?= e($asset['status'] ?? '') ?>"
+                                    data-image="<?= e($asset['image_url'] ?? '') ?>">
+                                    <td><?= 'EQ-' . str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
+
+                                    <td><?= e($asset['name']) ?></td>
+
+                                    <td>
+                                        <?= condition_badge((string) $asset['condition']) ?>
+                                    </td>
+
+                                    <td>
+                                        <button
+                                            type="button"
+                                            class="view-button edit-button"
+                                            data-id="<?= (int) $asset['id'] ?>">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                            Edit
+                                        </button>
+
+                                        <a
+                                            href="viewequip.php?id=<?= (int) $asset['id'] ?>"
+                                            class="view-button view-button-action">
+                                            <i class="fa-solid fa-eye"></i>
+                                            View
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                     <p id="noResults" class="hidden py-6 text-center text-gray-500">No equipment matches your search.</p>
@@ -209,11 +327,11 @@ require_login();
             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
                 <i class="fa-solid fa-circle-question text-3xl text-[#155B92]"></i>
             </div>
-            <h2 class="mb-2 text-xl font-bold text-gray-800">Save Changes</h2>
-            <p class="mb-6 text-sm text-gray-600">Are you sure you want to save the changes to this equipment?</p>
+            <h2 class="mb-2 text-xl font-bold text-gray-800">Confirm Changes</h2>
+            <p class="mb-6 text-sm text-gray-500">Are you sure you want to save these equipment changes?</p>
             <div class="flex justify-center gap-3">
-                <button type="button" id="cancelequipmentConfirm" class="rounded-lg border border-slate-300 px-5 py-2 text-sm text-gray-700 hover:bg-gray-100">Cancel</button>
-                <button type="button" id="confirmequipmentSave" class="cursor-pointer rounded-lg bg-[#155B92] px-5 py-2 text-sm text-white hover:bg-[#10456f]">Yes, Save</button>
+                <button type="button" id="cancelequipmentConfirm" class="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"><i class="fa-solid fa-xmark mr-1"></i>Cancel</button>
+                <button type="button" id="confirmequipmentSave" class="cursor-pointer rounded-lg bg-[#15588F] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#103F6C]"><i class="fa-solid fa-check mr-1"></i>Yes, Save</button>
             </div>
         </div>
     </div>
@@ -249,258 +367,297 @@ require_login();
     </div>
 
     <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const table = document.querySelector(".condition-table");
-        const searchInput = document.getElementById("searchInput");
-        const conditionFilter = document.getElementById("conditionFilter");
-        const form = document.getElementById("assessmentForm");
-        const emptyState = document.getElementById("emptyState");
-        const equipmentId = document.getElementById("id");
-        const equipmentName = document.getElementById("name");
-        const panelCondition = document.getElementById("panelCondition");
-        const notes = document.getElementById("notes");
-        const equipStatus = document.getElementById("equipStatus");
-        const noResults = document.getElementById("noResults");
-        const status = document.getElementById("status");
-        const prevButton = document.getElementById("prevPage");
-        const nextButton = document.getElementById("nextPage");
-        const pageNumbers = document.getElementById("pageNumbers");
-        const confirmModal = document.getElementById("confirmModal");
-        const cancelSave = document.getElementById("cancelequipmentConfirm");
-        const confirmSave = document.getElementById("confirmequipmentSave");
-        const rows = Array.from(table.querySelectorAll("tbody tr"));
+        document.addEventListener("DOMContentLoaded", function() {
+            const table = document.querySelector(".condition-table");
+            const searchInput = document.getElementById("searchInput");
+            const conditionFilter = document.getElementById("conditionFilter");
+            const form = document.getElementById("assessmentForm");
+            const emptyState = document.getElementById("emptyState");
+            const equipmentId = document.getElementById("id");
+            const equipmentName = document.getElementById("name");
+            const equipmentImage = document.getElementById("image");
+            const panelCondition = document.getElementById("panelCondition");
+            const notes = document.getElementById("notes");
+            const equipStatus = document.getElementById("equipStatus");
+            const noResults = document.getElementById("noResults");
+            const status = document.getElementById("status");
+            const prevButton = document.getElementById("prevPage");
+            const nextButton = document.getElementById("nextPage");
+            const pageNumbers = document.getElementById("pageNumbers");
+            const confirmModal = document.getElementById("confirmModal");
+            const cancelSave = document.getElementById("cancelequipmentConfirm");
+            const confirmSave = document.getElementById("confirmequipmentSave");
+            const confirmSaveDefaultHtml = confirmSave.innerHTML;
+            const rows = Array.from(table.querySelectorAll("tbody tr"));
 
-        const rowsPerPage = 10;
-        const toastTimers = {};
-        let currentPage = 1;
-        let selectedRow = null;
+            const rowsPerPage = 10;
+            const toastTimers = {};
+            let currentPage = 1;
+            let selectedRow = null;
+            let isSaving = false;
 
-        function showToast(type, message) {
-            const toast = document.getElementById("toast-" + type);
-            const messageElement = document.getElementById("toast-" + type + "-message");
+            function showToast(type, message) {
+                const toast = document.getElementById("toast-" + type);
+                const messageElement = document.getElementById("toast-" + type + "-message");
 
-            if (!toast || !messageElement) return;
+                if (!toast || !messageElement) return;
 
-            clearTimeout(toastTimers[type]);
-            messageElement.textContent = message;
-            toast.classList.remove("translate-x-[120%]", "opacity-0");
-            toast.classList.add("translate-x-0", "opacity-100");
+                clearTimeout(toastTimers[type]);
+                messageElement.textContent = message;
+                toast.classList.remove("translate-x-[120%]", "opacity-0");
+                toast.classList.add("translate-x-0", "opacity-100");
 
-            toastTimers[type] = setTimeout(() => hideToast(type), 3000);
-        }
+                toastTimers[type] = setTimeout(() => hideToast(type), 3000);
+            }
 
-        function hideToast(type) {
-            const toast = document.getElementById("toast-" + type);
-            if (!toast) return;
+            function hideToast(type) {
+                const toast = document.getElementById("toast-" + type);
+                if (!toast) return;
 
-            clearTimeout(toastTimers[type]);
-            toast.classList.remove("translate-x-0", "opacity-100");
-            toast.classList.add("translate-x-[120%]", "opacity-0");
-        }
+                clearTimeout(toastTimers[type]);
+                toast.classList.remove("translate-x-0", "opacity-100");
+                toast.classList.add("translate-x-[120%]", "opacity-0");
+            }
 
-        document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
-            button.addEventListener("click", () => hideToast(button.dataset.dismissToast));
-        });
-
-        function getCondition(row) {
-            return row.querySelector(".condition")?.textContent.trim() || "";
-        }
-
-        function updateCondition(row, value) {
-            const cells = row.querySelectorAll("td");
-            const badge = document.createElement("span");
-            badge.className = "condition " + value.toLowerCase();
-
-            const dot = document.createElement("span");
-            badge.appendChild(dot);
-            badge.appendChild(document.createTextNode(value));
-            cells[2].replaceChildren(badge);
-        }
-
-        function openequipment(row) {
-            emptyState.hidden = true;
-            form.hidden = false;
-            selectedRow = row;
-
-            const cells = row.querySelectorAll("td");
-            const condition = getCondition(row);
-
-            equipmentId.textContent = cells[0].textContent.trim();
-            equipmentName.textContent = cells[1].textContent.trim();
-            panelCondition.textContent = "Current condition: " + condition;
-            notes.value = row.dataset.notes || "";
-            equipStatus.value = row.dataset.status || "";
-
-            const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
-            if (radio) radio.checked = true;
-
-            rows.forEach(item => item.classList.remove("selected-row"));
-            row.classList.add("selected-row");
-
-            status.textContent = "equipment ID " + cells[0].textContent.trim() + " selected.";
-        }
-
-        rows.forEach(row => {
-            row.querySelector(".edit-button")?.addEventListener("click", () => openequipment(row));
-
-            row.querySelector(".view-button-action")?.addEventListener("click", event => {
-                event.preventDefault();
-                openequipment(row);
-                status.textContent = "Displaying equipment details.";
+            document.querySelectorAll("[data-dismiss-toast]").forEach(button => {
+                button.addEventListener("click", () => hideToast(button.dataset.dismissToast));
             });
-        });
 
-        function getFilteredRows() {
-            const search = searchInput.value.trim().toLowerCase();
-            const selectedCondition = conditionFilter.value.toLowerCase();
+            function getCondition(row) {
+                return row.querySelector(".condition")?.textContent.trim() || "";
+            }
 
-            return rows.filter(row => {
+            function updateCondition(row, value) {
                 const cells = row.querySelectorAll("td");
-                const id = cells[0].textContent.trim().toLowerCase();
-                const name = cells[1].textContent.trim().toLowerCase();
-                const condition = getCondition(row).toLowerCase();
+                const badge = document.createElement("span");
+                badge.className = "condition " + value.toLowerCase();
 
-                return (id.includes(search) || name.includes(search)) &&
-                    (selectedCondition === "all" || condition === selectedCondition);
+                const dot = document.createElement("span");
+                badge.appendChild(dot);
+                badge.appendChild(document.createTextNode(value));
+                cells[2].replaceChildren(badge);
+            }
+
+            function openequipment(row) {
+                emptyState.hidden = true;
+                form.hidden = false;
+                selectedRow = row;
+
+                const cells = row.querySelectorAll("td");
+                const condition = getCondition(row);
+
+                equipmentId.textContent = cells[0].textContent.trim();
+                equipmentName.textContent = cells[1].textContent.trim();
+                panelCondition.textContent = "Current condition: " + condition;
+                notes.value = row.dataset.notes || "";
+                equipStatus.value = row.dataset.status || "";
+                equipmentImage.src = row.dataset.image || "../img/logo.png";
+
+                const radio = form.querySelector('input[name="condition"][value="' + condition + '"]');
+                if (radio) radio.checked = true;
+
+                rows.forEach(item => item.classList.remove("selected-row"));
+                row.classList.add("selected-row");
+
+                status.textContent = "equipment ID " + cells[0].textContent.trim() + " selected.";
+            }
+
+            rows.forEach(row => {
+                row.querySelector(".edit-button")?.addEventListener("click", () =>
+                    openequipment(row));
             });
-        }
 
-        function renderTable() {
-            const filteredRows = getFilteredRows();
-            const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
-            currentPage = Math.min(currentPage, totalPages);
+            function getFilteredRows() {
+                const search = searchInput.value.trim().toLowerCase();
+                const selectedCondition = conditionFilter.value.toLowerCase();
 
-            rows.forEach(row => row.style.display = "none");
+                return rows.filter(row => {
+                    const cells = row.querySelectorAll("td");
+                    const id = cells[0].textContent.trim().toLowerCase();
+                    const name = cells[1].textContent.trim().toLowerCase();
+                    const condition = getCondition(row).toLowerCase();
 
-            const start = (currentPage - 1) * rowsPerPage;
-            filteredRows.slice(start, start + rowsPerPage).forEach(row => row.style.display = "");
-
-            noResults.classList.toggle("hidden", filteredRows.length !== 0);
-            pageNumbers.replaceChildren();
-
-            for (let page = 1; page <= totalPages; page++) {
-                const button = document.createElement("button");
-                button.type = "button";
-                button.textContent = page;
-                button.className = "pagination-number";
-
-                if (page === currentPage) button.classList.add("active");
-
-                button.addEventListener("click", () => {
-                    currentPage = page;
-                    renderTable();
+                    return (id.includes(search) || name.includes(search)) &&
+                        (selectedCondition === "all" || condition === selectedCondition);
                 });
-
-                pageNumbers.appendChild(button);
             }
 
-            prevButton.disabled = currentPage === 1;
-            nextButton.disabled = currentPage === totalPages || filteredRows.length === 0;
+            function renderTable() {
+                const filteredRows = getFilteredRows();
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage));
+                currentPage = Math.min(currentPage, totalPages);
 
-            prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
-            nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
-            prevButton.style.cursor = prevButton.disabled ? "not-allowed" : "pointer";
-            nextButton.style.cursor = nextButton.disabled ? "not-allowed" : "pointer";
-        }
+                rows.forEach(row => row.style.display = "none");
 
-        function closeConfirmModal() {
-            confirmModal.classList.add("hidden");
-            confirmModal.classList.remove("flex");
-        }
+                const start = (currentPage - 1) * rowsPerPage;
+                filteredRows.slice(start, start + rowsPerPage).forEach(row => row.style.display = "");
 
-        form.addEventListener("submit", event => {
-            event.preventDefault();
+                noResults.classList.toggle("hidden", filteredRows.length !== 0);
+                pageNumbers.replaceChildren();
 
-            if (!selectedRow) {
-                showToast("warning", "Please select a equipment first.");
-                return;
+                for (let page = 1; page <= totalPages; page++) {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.textContent = page;
+                    button.className = "pagination-number";
+
+                    if (page === currentPage) button.classList.add("active");
+
+                    button.addEventListener("click", () => {
+                        currentPage = page;
+                        renderTable();
+                    });
+
+                    pageNumbers.appendChild(button);
+                }
+
+                prevButton.disabled = currentPage === 1;
+                nextButton.disabled = currentPage === totalPages || filteredRows.length === 0;
+
+                prevButton.style.opacity = prevButton.disabled ? "0.5" : "1";
+                nextButton.style.opacity = nextButton.disabled ? "0.5" : "1";
+                prevButton.style.cursor = prevButton.disabled ? "not-allowed" : "pointer";
+                nextButton.style.cursor = nextButton.disabled ? "not-allowed" : "pointer";
             }
 
-            if (!form.querySelector('input[name="condition"]:checked')) {
-                showToast("warning", "Please select a condition before saving.");
-                return;
+            function closeConfirmModal() {
+                if (isSaving) return;
+                confirmModal.classList.add("hidden");
+                confirmModal.classList.remove("flex");
             }
 
-            if (!equipStatus.value) {
-                showToast("warning", "Please select a status before saving.");
-                equipStatus.focus();
-                return;
+            function setSaving(saving) {
+                isSaving = saving;
+                confirmSave.disabled = saving;
+                cancelSave.disabled = saving;
+                confirmSave.innerHTML = saving ?
+                    '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...' :
+                    confirmSaveDefaultHtml;
             }
 
-            confirmModal.classList.remove("hidden");
-            confirmModal.classList.add("flex");
-        });
+            form.addEventListener("submit", event => {
+                event.preventDefault();
 
-        cancelSave.addEventListener("click", closeConfirmModal);
+                if (!selectedRow) {
+                    showToast("warning", "Please select a equipment first.");
+                    return;
+                }
 
-        confirmSave.addEventListener("click", () => {
-            if (!selectedRow) {
-                closeConfirmModal();
-                showToast("danger", "No equipment is selected.");
-                return;
-            }
+                if (!form.querySelector('input[name="condition"]:checked')) {
+                    showToast("warning", "Please select a condition before saving.");
+                    return;
+                }
 
-            const selectedRadio = form.querySelector('input[name="condition"]:checked');
+                if (!equipStatus.value) {
+                    showToast("warning", "Please select a status before saving.");
+                    equipStatus.focus();
+                    return;
+                }
 
-            if (!selectedRadio || !equipStatus.value) {
-                closeConfirmModal();
-                showToast("warning", "Please complete the required fields.");
-                return;
-            }
+                confirmModal.classList.remove("hidden");
+                confirmModal.classList.add("flex");
+            });
 
-            updateCondition(selectedRow, selectedRadio.value);
-            selectedRow.dataset.notes = notes.value;
-            selectedRow.dataset.status = equipStatus.value;
+            cancelSave.addEventListener("click", closeConfirmModal);
 
-            panelCondition.textContent = "Current condition: " + selectedRadio.value;
+            confirmSave.addEventListener("click", async () => {
+                if (isSaving) return;
 
-            const savedName = equipmentName.textContent;
+                if (!selectedRow) {
+                    closeConfirmModal();
+                    showToast("danger", "No equipment is selected.");
+                    return;
+                }
 
-            closeConfirmModal();
-            status.textContent = "Assessment updated for " + savedName + ".";
-            renderTable();
+                const selectedRadio = form.querySelector('input[name="condition"]:checked');
 
-            showToast("success", "Equipment condition saved successfully.");
-        });
+                if (!selectedRadio || !equipStatus.value) {
+                    closeConfirmModal();
+                    showToast("warning", "Please complete the required fields.");
+                    return;
+                }
 
-        confirmModal.addEventListener("click", event => {
-            if (event.target === confirmModal) closeConfirmModal();
-        });
+                setSaving(true);
 
-        document.addEventListener("keydown", event => {
-            if (event.key === "Escape" && !confirmModal.classList.contains("hidden")) {
-                closeConfirmModal();
-            }
-        });
+                try {
+                    const response = await fetch(window.location.pathname, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            equipment_id: selectedRow.dataset.assetId,
+                            condition: selectedRadio.value,
+                            status: equipStatus.value,
+                            notes: notes.value
+                        })
+                    });
 
-        searchInput.addEventListener("input", () => {
-            currentPage = 1;
-            renderTable();
-        });
+                    const result = await response.json().catch(() => ({}));
 
-        conditionFilter.addEventListener("change", () => {
-            currentPage = 1;
-            renderTable();
-        });
+                    if (!response.ok || !result.ok) {
+                        throw new Error(result.message || "Unable to save the assessment.");
+                    }
 
-        prevButton.addEventListener("click", () => {
-            if (currentPage > 1) {
-                currentPage--;
+                    updateCondition(selectedRow, selectedRadio.value);
+                    selectedRow.dataset.notes = notes.value;
+                    selectedRow.dataset.status = equipStatus.value;
+
+                    panelCondition.textContent = "Current condition: " + selectedRadio.value;
+
+                    const savedName = equipmentName.textContent;
+
+                    status.textContent = "Assessment updated for " + savedName + ".";
+                    renderTable();
+
+                    showToast("success", "Equipment condition saved successfully.");
+                } catch (error) {
+                    showToast("danger", error.message);
+                } finally {
+                    setSaving(false);
+                    closeConfirmModal();
+                }
+            });
+
+            confirmModal.addEventListener("click", event => {
+                if (event.target === confirmModal) closeConfirmModal();
+            });
+
+            document.addEventListener("keydown", event => {
+                if (event.key === "Escape" && !confirmModal.classList.contains("hidden")) {
+                    closeConfirmModal();
+                }
+            });
+
+            searchInput.addEventListener("input", () => {
+                currentPage = 1;
                 renderTable();
-            }
-        });
+            });
 
-        nextButton.addEventListener("click", () => {
-            const totalPages = Math.ceil(getFilteredRows().length / rowsPerPage);
-
-            if (currentPage < totalPages) {
-                currentPage++;
+            conditionFilter.addEventListener("change", () => {
+                currentPage = 1;
                 renderTable();
-            }
-        });
+            });
 
-        renderTable();
-    });
+            prevButton.addEventListener("click", () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderTable();
+                }
+            });
+
+            nextButton.addEventListener("click", () => {
+                const totalPages = Math.ceil(getFilteredRows().length / rowsPerPage);
+
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderTable();
+                }
+            });
+
+            renderTable();
+        });
     </script>
 </body>
+
 </html>
