@@ -253,6 +253,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $pdo->commit();
 
+            $centralRecordStmt = $pdo->prepare('SELECT * FROM public.equipment WHERE id = :id');
+            $centralRecordStmt->execute(['id' => $equipmentId]);
+            $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
+            if ($centralRecord) lifecycle_central_sync_asset('equipment', $centralRecord);
+
             if ($newImagePath && $oldImageUrl !== '' && strpos($oldImageUrl, '../uploads/equipment/') === 0) {
                 $oldFile = dirname(__DIR__) . '/uploads/equipment/' . basename($oldImageUrl);
                 if (is_file($oldFile)) unlink($oldFile);

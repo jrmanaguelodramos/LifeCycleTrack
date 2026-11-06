@@ -6,6 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/central_api.php';
 
 if (!function_exists('e')) {
     function e($value) {

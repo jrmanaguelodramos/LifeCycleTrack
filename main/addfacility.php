@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :is_estimated_year,
                 :condition,
                 :remarks
-            )
+            ) RETURNING id
         ';
 
         $stmt = $pdo->prepare($sql);
@@ -83,6 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $remarks !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL
         );
         $stmt->execute();
+        $centralAssetId = $stmt->fetchColumn();
+
+        $centralRecordStmt = $pdo->prepare('SELECT * FROM public.facilities WHERE id = :id');
+        $centralRecordStmt->execute(['id' => $centralAssetId]);
+        $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
+        if ($centralRecord) lifecycle_central_sync_asset('facility', $centralRecord);
 
         $_SESSION['facilityAddedToast'] = true;
         header('Location: facilities_list.php');

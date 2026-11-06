@@ -186,6 +186,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $pdo->commit();
+
+            $centralRecordStmt = $pdo->prepare('SELECT * FROM public.facilities WHERE id = :id');
+            $centralRecordStmt->execute(['id' => $facilityId]);
+            $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
+            if ($centralRecord) lifecycle_central_sync_asset('facility', $centralRecord);
+
             $_SESSION['facilityUpdatedToast'] = true;
             header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . '?id=' . $facilityId);
             exit;

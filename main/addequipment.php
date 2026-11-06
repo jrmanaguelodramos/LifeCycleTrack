@@ -238,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :details_name,
                 :remarks,
                 :image_url
-            )'
+            ) RETURNING id'
         );
 
         $stmt->execute([
@@ -262,8 +262,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'remarks' => $remarks !== '' ? $remarks : null,
             'image_url' => $imageUrl
         ]);
+        $centralAssetId = $stmt->fetchColumn();
 
         $pdo->commit();
+
+        $centralRecordStmt = $pdo->prepare('SELECT * FROM public.equipment WHERE id = :id');
+        $centralRecordStmt->execute(['id' => $centralAssetId]);
+        $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
+        if ($centralRecord) lifecycle_central_sync_asset('equipment', $centralRecord);
 
         $_SESSION['equipmentAddedToast'] = true;
         header('Location: equipments_list.php');
