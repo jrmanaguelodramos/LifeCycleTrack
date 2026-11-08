@@ -4,6 +4,7 @@ require_login();
 
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 if (!isset($pdo)) require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/central_sync.php';
 
 if (isset($_GET['fetch_rooms'])) {
     header('Content-Type: application/json; charset=utf-8');
@@ -86,6 +87,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (function_exists('verify_csrf')) verify_csrf();
 
+        if (isset($_POST['floor'], $_POST['room'])) {
+            $floor = trim($_POST['floor']);
+            $room = trim($_POST['room']);
+
+            $values['location'] = $floor . ' - ' . $room;
+        }
+
+        $allowedFloors = [
+            'Ground',
+            '2nd Floor',
+            '3rd Floor',
+            '4th Floor'
+        ];
+
+        if (!in_array($_POST['floor'] ?? '', $allowedFloors, true)) {
+            throw new RuntimeException('Select a valid assigned floor.');
+        }
+
+        if (trim($_POST['room'] ?? '') === '') {
+            throw new RuntimeException('Select an assigned room.');
+        }
+
         extract($values, EXTR_SKIP);
 
         if ($name === '' || mb_strlen($name) > 255)
@@ -100,7 +123,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Office, facility or utility equipment'
         ], true))
             throw new RuntimeException('Select a valid equipment category.');
-
         if ($location === '')
             throw new RuntimeException('Select an assigned office or location.');
 
@@ -262,8 +284,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'remarks' => $remarks !== '' ? $remarks : null,
             'image_url' => $imageUrl
         ]);
+<<<<<<< Updated upstream
 
         $pdo->commit();
+=======
+
+        $equipmentId = (string) $stmt->fetchColumn();
+        lifecycle_central_enqueue($pdo, lifecycle_central_payload([
+            'id' => $equipmentId,
+            'asset_tag' => $assetTag,
+            'name' => $name,
+            'brand' => $brand,
+            'model' => $model,
+            'category' => $category,
+            'location' => $location,
+            'date_acquired' => sprintf('%04d-01-01', $year),
+            'acquisition_year' => $year,
+            'is_estimated_year' => !empty($_POST['year_estimated']),
+            'condition' => $status,
+            'status' => $lifecycleStatus,
+            'acquisition_cost' => $cost,
+            'cost_type' => $basis,
+            'usage_schedule' => $sched,
+            'hours_per_day' => $hours,
+            'quantity' => $quantity,
+        ], 'equipment'));
+
+        $pdo->commit();
+        lifecycle_central_flush($pdo);
+>>>>>>> Stashed changes
 
         $_SESSION['equipmentAddedToast'] = true;
         header('Location: equipments_list.php');
