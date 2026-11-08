@@ -155,7 +155,6 @@ $conditionAssets = load_equipment_assessments($pdo);
     <link rel="stylesheet" href="../css/equipment_condition.css">
 
     <style>
-        /* Loading state for the confirm modal buttons */
         #confirmModal button:disabled {
             cursor: not-allowed;
         }
@@ -212,7 +211,7 @@ $conditionAssets = load_equipment_assessments($pdo);
                                     data-notes="<?= e($asset['assessment_notes'] ?? '') ?>"
                                     data-status="<?= e($asset['status'] ?? '') ?>"
                                     data-image="<?= e($asset['image_url'] ?? '') ?>">
-                                    <td><?= 'EQ-' . str_pad((string) $asset['id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                    <td><?= 'EQ-' . str_pad((string) $asset['id'], 3, '0', STR_PAD_LEFT) ?></td>
 
                                     <td><?= e($asset['name']) ?></td>
 

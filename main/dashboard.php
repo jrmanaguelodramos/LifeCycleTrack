@@ -13,6 +13,9 @@ require_once __DIR__ . '/../config/database.php';
 const EQUIPMENT_VIEW_PAGE = 'viewequip.php';
 const FACILITY_VIEW_PAGE  = 'viewfacility.php';
 
+const EQUIPMENT_CONDITION_PAGE = 'equip_condition.php';
+const FACILITY_CONDITION_PAGE  = 'facility_condition.php';
+
 function e($value): string
 {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
@@ -82,6 +85,8 @@ $equipmentsCounts = ['Good' => 0, 'Fair' => 0, 'Poor' => 0];
 $facilitiesScore = 0;
 $equipmentsScore = 0;
 $recentActivities = [];
+$poorEquipment = [];
+$poorFacilities = [];
 
 try {
 
@@ -107,6 +112,20 @@ try {
 
     $facilitiesScore = calculateScore($facilitiesCounts);
     $equipmentsScore = calculateScore($equipmentsCounts);
+
+    $poorEquipment = $pdo->query(
+        "SELECT id, name, location
+         FROM equipment
+         WHERE LOWER(condition) = 'poor'
+         ORDER BY name"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $poorFacilities = $pdo->query(
+        "SELECT id, name, location
+         FROM facilities
+         WHERE LOWER(condition) = 'poor'
+         ORDER BY name"
+    )->fetchAll(PDO::FETCH_ASSOC);
 
     $stmt = $pdo->query(
         "SELECT
@@ -186,6 +205,49 @@ function parseDetails(?string $details): array
     }
 
     return $items;
+}
+
+function alertGroup(string $title, string $icon, array $items, string $page): void
+{
+    ?>
+    <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <h3 style="font-size:15px;font-weight:700;color:#103F6C;display:flex;align-items:center;gap:8px;">
+                <i class="fa-solid <?= e($icon) ?>"></i><?= e($title) ?>
+            </h3>
+            <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:9999px;background:#ffe5e5;color:#b91c1c;">
+                <?= count($items) ?>
+            </span>
+        </div>
+
+        <?php if (empty($items)): ?>
+            <p style="font-size:14px;color:#6b7280;padding:10px 12px;border:1px dashed #d1d5db;border-radius:10px;">
+                No poor-condition items.
+            </p>
+        <?php else: ?>
+            <div data-alert-list style="display:flex;flex-direction:column;gap:8px;">
+                <?php foreach ($items as $item): ?>
+                    <a href="<?= e($page . '?id=' . (int) $item['id']) ?>"
+                       class="alert-item"
+                       style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;text-decoration:none;color:#111827;">
+                        <span style="min-width:0;">
+                            <span style="display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                <?= e($item['name']) ?>
+                            </span>
+                            <span style="display:block;font-size:12px;color:#6b7280;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                <?= e(($item['location'] ?? '') !== '' ? $item['location'] : 'No location') ?>
+                            </span>
+                        </span>
+                        <span style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+                            <span style="font-size:12px;font-weight:600;padding:2px 10px;border-radius:9999px;background:#ffe5e5;color:#b91c1c;">Poor</span>
+                            <i class="fa-solid fa-chevron-right" style="font-size:11px;color:#9ca3af;"></i>
+                        </span>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php
 }
 
 function lifecycleChart(int $score, array $counts): void
@@ -296,6 +358,12 @@ function lifecycleChart(int $score, array $counts): void
     <link rel="stylesheet" href="../css/sidebar.css">
     <link rel="stylesheet" href="../css/dashboard.css">
     <link rel="stylesheet" href="../src/output.css">
+    <style>
+        .alert-item:hover {
+            background: #f3f7fb;
+            border-color: #155B92 !important;
+        }
+    </style>
 </head>
 
 <!--bg-[#F4F7FB]-->
@@ -361,11 +429,14 @@ function lifecycleChart(int $score, array $counts): void
                 <div class="flex items-start justify-between gap-3">
                     <h2 class="text-base font-bold text-gray-900">Condition Alerts</h2>
 
-                    <a href="facility_condition.php"
-                       aria-label="View condition assessments"
-                       class="w-9 h-9 shrink-0 rounded-full bg-[#155B92] flex items-center justify-center">
+                    <button type="button"
+                            id="openAlertsModal"
+                            aria-label="View poor-condition assets"
+                            aria-haspopup="dialog"
+                            class="w-9 h-9 shrink-0 rounded-full bg-[#155B92] flex items-center justify-center"
+                            style="border:0;cursor:pointer;">
                         <i class="fa-solid fa-arrow-up-right-from-square text-white text-sm"></i>
-                    </a>
+                    </button>
                 </div>
 
                 <p class="text-5xl xl:text-6xl font-bold text-red-600 mt-3">
@@ -402,7 +473,13 @@ function lifecycleChart(int $score, array $counts): void
         <h2 class="text-xl font-bold mb-3 mt-3">Recent Activity</h2>
 
         <div class="custom-table-container overflow-x-auto">
-            <table class="custom-table w-full">
+            <table class="custom-table w-full" style="table-layout:fixed;width:100%;">
+                <colgroup>
+                    <col style="width:18%;">
+                    <col style="width:22%;">
+                    <col style="width:18%;">
+                    <col style="width:42%;">
+                </colgroup>
 
                 <thead>
                     <tr>
@@ -444,7 +521,7 @@ function lifecycleChart(int $score, array $counts): void
                                 </td>
 
                                 <td>
-                                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-weight:400;">
+                                    <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:20px;text-align:left;font-weight:400;">
                                         <div>
                                             <div style="font-weight:600;"><?= e(formatAction($activity['action'] ?? '')) ?></div>
 
@@ -467,6 +544,7 @@ function lifecycleChart(int $score, array $counts): void
                                             <a href="<?= e($link) ?>"
                                                title="View <?= e($activity['asset_name']) ?>"
                                                aria-label="View <?= e($activity['asset_name']) ?>"
+                                                 style="flex-shrink:0;white-space:nowrap;"
                                                  class="border rounded-2xl p-2 bg-[#15588F] text-white hover:bg-[#10456f] transition">
                                                 <i class="fa-solid fa-eye"></i> View
                                             </a>
@@ -482,5 +560,167 @@ function lifecycleChart(int $score, array $counts): void
             </table>
         </div>
     </main>
+
+    <div id="alertsModal"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="alertsModalTitle"
+         style="display:none;position:fixed;top:0;right:0;bottom:0;left:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.5);padding:16px;">
+
+        <div style="display:flex;flex-direction:column;width:100%;max-width:560px;max-height:80vh;background:#fff;border-radius:16px;box-shadow:0 20px 40px rgba(0,0,0,.25);">
+
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 24px 12px;border-bottom:1px solid #e5e7eb;">
+                <div>
+                    <h2 id="alertsModalTitle" style="font-size:20px;font-weight:700;color:#111827;">Condition Alerts</h2>
+                    <p style="margin-top:2px;font-size:13px;color:#6b7280;">
+                        <?= (int) $conditionAlerts ?> asset(s) in poor condition. Click an item to open its condition page.
+                    </p>
+                </div>
+                <button type="button"
+                        id="closeAlertsModal"
+                        aria-label="Close"
+                        style="border:0;background:transparent;cursor:pointer;font-size:26px;line-height:1;color:#6b7280;">
+                    &times;
+                </button>
+            </div>
+
+            <div style="overflow-y:auto;padding:20px 24px 4px;">
+                <?php
+                alertGroup('Equipment', 'fa-wrench', $poorEquipment, EQUIPMENT_CONDITION_PAGE);
+                alertGroup('Facilities', 'fa-building', $poorFacilities, FACILITY_CONDITION_PAGE);
+                ?>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const modal = document.getElementById('alertsModal');
+            const openButton = document.getElementById('openAlertsModal');
+            const closeButton = document.getElementById('closeAlertsModal');
+
+            function openModal() {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+                closeButton.focus();
+            }
+
+            function closeModal() {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+                openButton.focus();
+            }
+
+            const ALERTS_PER_PAGE = 5;
+
+            document.querySelectorAll('[data-alert-list]').forEach(function(list) {
+                const items = Array.from(list.children);
+                if (items.length <= ALERTS_PER_PAGE) return;
+
+                const totalPages = Math.ceil(items.length / ALERTS_PER_PAGE);
+                const pager = document.createElement('div');
+                pager.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;';
+                list.parentNode.appendChild(pager);
+
+                let page = 1;
+
+                function pageButton(label, target, options) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.innerHTML = label;
+                    button.disabled = !!options.disabled;
+                    button.setAttribute('aria-label', options.aria || 'Page ' + label);
+                    if (options.current) button.setAttribute('aria-current', 'page');
+
+                    button.style.cssText =
+                        'min-width:30px;height:30px;padding:0 8px;border-radius:8px;font-size:13px;font-weight:600;' +
+                        'border:1px solid ' + (options.current ? '#155B92' : '#d1d5db') + ';' +
+                        'background:' + (options.current ? '#155B92' : '#fff') + ';' +
+                        'color:' + (options.current ? '#fff' : '#374151') + ';' +
+                        'cursor:' + (options.disabled ? 'not-allowed' : 'pointer') + ';' +
+                        'opacity:' + (options.disabled ? '0.5' : '1') + ';';
+
+                    if (!options.disabled && !options.current) {
+                        button.addEventListener('click', function() {
+                            page = target;
+                            render();
+                        });
+                    }
+
+                    return button;
+                }
+
+                function visiblePages() {
+                    const pages = [];
+                    for (let i = 1; i <= totalPages; i++) {
+                        if (i === 1 || i === totalPages || Math.abs(i - page) <= 1) {
+                            pages.push(i);
+                        } else if (pages[pages.length - 1] !== '...') {
+                            pages.push('...');
+                        }
+                    }
+                    return pages;
+                }
+
+                function render() {
+                    const start = (page - 1) * ALERTS_PER_PAGE;
+                    const end = Math.min(start + ALERTS_PER_PAGE, items.length);
+
+                    items.forEach(function(item, index) {
+                        item.style.display = index >= start && index < end ? 'flex' : 'none';
+                    });
+
+                    pager.replaceChildren();
+
+                    const info = document.createElement('span');
+                    info.style.cssText = 'font-size:12px;color:#6b7280;';
+                    info.textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + items.length;
+                    pager.appendChild(info);
+
+                    const controls = document.createElement('div');
+                    controls.style.cssText = 'display:flex;align-items:center;gap:4px;';
+
+                    controls.appendChild(pageButton('<i class="fa-solid fa-chevron-left"></i>', page - 1, {
+                        disabled: page === 1,
+                        aria: 'Previous page'
+                    }));
+
+                    visiblePages().forEach(function(entry) {
+                        if (entry === '...') {
+                            const dots = document.createElement('span');
+                            dots.textContent = '...';
+                            dots.style.cssText = 'padding:0 4px;color:#9ca3af;font-size:13px;';
+                            controls.appendChild(dots);
+                        } else {
+                            controls.appendChild(pageButton(String(entry), entry, {
+                                current: entry === page
+                            }));
+                        }
+                    });
+
+                    controls.appendChild(pageButton('<i class="fa-solid fa-chevron-right"></i>', page + 1, {
+                        disabled: page === totalPages,
+                        aria: 'Next page'
+                    }));
+
+                    pager.appendChild(controls);
+                }
+
+                render();
+            });
+
+            openButton.addEventListener('click', openModal);
+            closeButton.addEventListener('click', closeModal);
+
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) closeModal();
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' && modal.style.display === 'flex') closeModal();
+            });
+        })();
+    </script>
 </body>
-</html>s
+
+</html>
