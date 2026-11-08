@@ -4,6 +4,7 @@ require_login();
 
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 if (!isset($pdo)) require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/central_sync.php';
 
 $error = '';
 $equipmentId = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -251,13 +252,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$check->fetchColumn()) throw new RuntimeException('Equipment not found.');
             }
 
+            $syncStmt = $pdo->prepare('SELECT id, asset_tag, name, brand, model, category, location, date_acquired, acquisition_year, is_estimated_year, condition, status, acquisition_cost, cost_type, usage_schedule, hours_per_day, quantity, updated_at FROM public.equipment WHERE id = :id');
+            $syncStmt->execute(['id' => $equipmentId]);
+            $syncRow = $syncStmt->fetch();
+            if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'equipment'));
             $pdo->commit();
-
-            $centralRecordStmt = $pdo->prepare('SELECT * FROM public.equipment WHERE id = :id');
-            $centralRecordStmt->execute(['id' => $equipmentId]);
-            $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
-            if ($centralRecord) lifecycle_central_sync_asset('equipment', $centralRecord);
-
+            lifecycle_central_flush($pdo);
             if ($newImagePath && $oldImageUrl !== '' && strpos($oldImageUrl, '../uploads/equipment/') === 0) {
                 $oldFile = dirname(__DIR__) . '/uploads/equipment/' . basename($oldImageUrl);
                 if (is_file($oldFile)) unlink($oldFile);

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/_app.php';
 require_login();
+require_once __DIR__ . '/../config/central_sync.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 if (!isset($pdo)) require_once __DIR__ . '/../config/database.php';
@@ -185,13 +186,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$check->fetchColumn()) throw new RuntimeException('Facility not found.');
             }
 
+            $syncStmt = $pdo->prepare('SELECT id, name, location, acquisition_year, is_estimated_year, condition, updated_at FROM public.facilities WHERE id = :id');
+            $syncStmt->execute(['id' => $facilityId]);
+            $syncRow = $syncStmt->fetch();
+            if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'facility'));
+
             $pdo->commit();
-
-            $centralRecordStmt = $pdo->prepare('SELECT * FROM public.facilities WHERE id = :id');
-            $centralRecordStmt->execute(['id' => $facilityId]);
-            $centralRecord = $centralRecordStmt->fetch(PDO::FETCH_ASSOC);
-            if ($centralRecord) lifecycle_central_sync_asset('facility', $centralRecord);
-
+            lifecycle_central_flush($pdo);
             $_SESSION['facilityUpdatedToast'] = true;
             header('Location: ' . strtok($_SERVER['REQUEST_URI'], '?') . '?id=' . $facilityId);
             exit;

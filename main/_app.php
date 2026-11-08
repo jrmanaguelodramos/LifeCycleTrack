@@ -6,7 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../config/central_api.php';
+require_once __DIR__ . '/../config/central_sync.php';
 
 if (!function_exists('e')) {
     function e($value) {
@@ -210,49 +210,69 @@ function facilities_list(PDO $pdo, string $search = '', string $condition = ''):
 
 function save_facility(PDO $pdo, array $data): int
 {
-    $stmt = $pdo->prepare(
-        'INSERT INTO public.facilities (name, condition, date_acquired, remarks)
-         VALUES (:name, :condition, :date_acquired, :remarks)
-         RETURNING id'
-    );
-
-    $stmt->execute([
-        ':name' => trim((string)$data['name']),
-        ':condition' => (string)$data['condition'],
-        ':date_acquired' => ($data['date_acquired'] ?? '') !== ''
-            ? $data['date_acquired']
-            : null,
-        ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
-    ]);
-
-    return (int)$stmt->fetchColumn();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO public.facilities (name, condition, date_acquired, remarks)
+             VALUES (:name, :condition, :date_acquired, :remarks)
+             RETURNING id'
+        );
+        $stmt->execute([
+            ':name' => trim((string)$data['name']),
+            ':condition' => (string)$data['condition'],
+            ':date_acquired' => ($data['date_acquired'] ?? '') !== '' ? $data['date_acquired'] : null,
+            ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
+        ]);
+        $id = (int) $stmt->fetchColumn();
+        lifecycle_central_enqueue($pdo, lifecycle_central_payload([
+            'id' => $id, 'name' => trim((string) $data['name']), 'condition' => (string) $data['condition'],
+            'date_acquired' => ($data['date_acquired'] ?? '') !== '' ? $data['date_acquired'] : null,
+        ], 'facility'));
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    lifecycle_central_flush($pdo);
+    return $id;
 }
 
 function save_equipment(PDO $pdo, array $data): int
 {
-    $stmt = $pdo->prepare(
-        'INSERT INTO public.equipment
-            (name, brand, model, category, location, date_acquired, condition, details_name, remarks)
-         VALUES
-            (:name, :brand, :model, :category, :location, :date_acquired, :condition, :details_name, :remarks)
-         RETURNING id'
-    );
-
-    $stmt->execute([
-        ':name' => trim((string)$data['name']),
-        ':brand' => trim((string)($data['brand'] ?? '')) ?: null,
-        ':model' => trim((string)($data['model'] ?? '')) ?: null,
-        ':category' => trim((string)($data['category'] ?? '')) ?: null,
-        ':location' => trim((string)$data['location']),
-        ':date_acquired' => ($data['date_acquired'] ?? '') !== ''
-            ? $data['date_acquired']
-            : null,
-        ':condition' => (string)$data['condition'],
-        ':details_name' => trim((string)($data['details_name'] ?? '')) ?: null,
-        ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
-    ]);
-
-    return (int)$stmt->fetchColumn();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO public.equipment
+                (name, brand, model, category, location, date_acquired, condition, details_name, remarks)
+             VALUES
+                (:name, :brand, :model, :category, :location, :date_acquired, :condition, :details_name, :remarks)
+             RETURNING id'
+        );
+        $stmt->execute([
+            ':name' => trim((string)$data['name']),
+            ':brand' => trim((string)($data['brand'] ?? '')) ?: null,
+            ':model' => trim((string)($data['model'] ?? '')) ?: null,
+            ':category' => trim((string)($data['category'] ?? '')) ?: null,
+            ':location' => trim((string)$data['location']),
+            ':date_acquired' => ($data['date_acquired'] ?? '') !== '' ? $data['date_acquired'] : null,
+            ':condition' => (string)$data['condition'],
+            ':details_name' => trim((string)($data['details_name'] ?? '')) ?: null,
+            ':remarks' => trim((string)($data['remarks'] ?? '')) ?: null,
+        ]);
+        $id = (int) $stmt->fetchColumn();
+        lifecycle_central_enqueue($pdo, lifecycle_central_payload([
+            'id' => $id, 'name' => trim((string) $data['name']), 'brand' => $data['brand'] ?? null,
+            'model' => $data['model'] ?? null, 'category' => $data['category'] ?? null,
+            'location' => $data['location'] ?? null, 'date_acquired' => $data['date_acquired'] ?? null,
+            'condition' => $data['condition'] ?? null,
+        ], 'equipment'));
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    lifecycle_central_flush($pdo);
+    return $id;
 }
 
 function facility_condition(PDO $pdo, string $search = '', string $condition = ''): array
