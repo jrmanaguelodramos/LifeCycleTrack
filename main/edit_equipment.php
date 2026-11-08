@@ -351,18 +351,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $syncRow = $syncStmt->fetch();
             if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'equipment'));
 
-            $syncStmt = $pdo->prepare('SELECT id, asset_tag, name, brand, model, category, asset_type, power_source, location, date_acquired, acquisition_year, is_estimated_year, condition, status, acquisition_cost, cost_type, usage_schedule, hours_per_day, quantity, updated_at FROM public.equipment WHERE id = :id');
-            $syncStmt->execute(['id' => $equipmentId]);
-            $syncRow = $syncStmt->fetch();
-            if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'equipment'));
-
-            $syncStmt = $pdo->prepare('SELECT id, asset_tag, name, brand, model, category, location, date_acquired, acquisition_year, is_estimated_year, condition, status, acquisition_cost, cost_type, usage_schedule, hours_per_day, quantity, updated_at FROM public.equipment WHERE id = :id');
-            $syncStmt->execute(['id' => $equipmentId]);
-            $syncRow = $syncStmt->fetch();
-            if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'equipment'));
             $pdo->commit();
             lifecycle_central_flush($pdo);
-            lifecycle_central_flush($pdo);
+
             if ($newImagePath && $oldImageUrl !== '' && strpos($oldImageUrl, '../uploads/equipment/') === 0) {
                 $oldFile = dirname(__DIR__) . '/uploads/equipment/' . basename($oldImageUrl);
                 if (is_file($oldFile)) unlink($oldFile);

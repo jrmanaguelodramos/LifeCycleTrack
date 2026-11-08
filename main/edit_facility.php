@@ -191,11 +191,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $syncRow = $syncStmt->fetch();
             if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'facility'));
 
-            $syncStmt = $pdo->prepare('SELECT id, name, location, acquisition_year, is_estimated_year, condition, updated_at FROM public.facilities WHERE id = :id');
-            $syncStmt->execute(['id' => $facilityId]);
-            $syncRow = $syncStmt->fetch();
-            if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'facility'));
-
             $pdo->commit();
             lifecycle_central_flush($pdo);
             $_SESSION['facilityUpdatedToast'] = true;

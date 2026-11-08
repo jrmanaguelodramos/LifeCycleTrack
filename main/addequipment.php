@@ -302,27 +302,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'brand' => $brand,
             'model' => $model,
             'category' => $category,
-            'location' => $location,
-            'date_acquired' => sprintf('%04d-01-01', $year),
-            'acquisition_year' => $year,
-            'is_estimated_year' => !empty($_POST['year_estimated']),
-            'condition' => $status,
-            'status' => $lifecycleStatus,
-            'acquisition_cost' => $cost,
-            'cost_type' => $basis,
-            'usage_schedule' => $sched,
-            'hours_per_day' => $hours,
-            'quantity' => $quantity,
-        ], 'equipment'));
-
-        $equipmentId = (string) $stmt->fetchColumn();
-        lifecycle_central_enqueue($pdo, lifecycle_central_payload([
-            'id' => $equipmentId,
-            'asset_tag' => $assetTag,
-            'name' => $name,
-            'brand' => $brand,
-            'model' => $model,
-            'category' => $category,
             'asset_type' => $kind,
             'power_source' => $power_source,
             'location' => $location,

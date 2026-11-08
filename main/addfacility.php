@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ';
 
         $pdo->beginTransaction();
-        $stmt = $pdo->prepare($sql . ' RETURNING id');
+        $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':name', $name, PDO::PARAM_STR);
         $stmt->bindValue(':location', $location, PDO::PARAM_STR);
         $stmt->bindValue(':acquisition_year', $year, PDO::PARAM_INT);
@@ -93,19 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], 'facility'));
         $pdo->commit();
         lifecycle_central_flush($pdo);
-        $facilityId = (string) $stmt->fetchColumn();
-        lifecycle_central_enqueue($pdo, lifecycle_central_payload([
-            'id' => $facilityId, 'name' => $name, 'location' => $location,
-            'acquisition_year' => $year, 'is_estimated_year' => $estimated, 'condition' => $condition,
-        ], 'facility'));
-        $pdo->commit();
-        lifecycle_central_flush($pdo);
-
+        
         $_SESSION['facilityAddedToast'] = true;
         header('Location: facilities_list.php');
         exit;
     } catch (Throwable $e) {
-        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
         error_log('Add facility error: ' . $e->getMessage());
         $error = 'Unable to add facility. Please check your information and try again.';
