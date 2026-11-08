@@ -86,6 +86,66 @@ $equipmentRows = fetch_equipment(
     $search,
     $filterCondition
 );
+
+if (!function_exists('equipment_split_location')) {
+    function equipment_split_location(string $location, array $floors): array
+    {
+        foreach ($floors as $floor) {
+            $prefix = $floor . ' - ';
+            if (strncmp($location, $prefix, strlen($prefix)) === 0) {
+                return [$floor, substr($location, strlen($prefix))];
+            }
+        }
+
+        return ['', ''];
+    }
+}
+
+$floorList = ['Ground', '2nd Floor', '3rd Floor', '4th Floor'];
+
+$powerById = [];
+try {
+    foreach ($pdo->query('SELECT id, power_source FROM public.equipment') as $powerRow) {
+        $powerById[(int)$powerRow['id']] = $powerRow['power_source'];
+    }
+} catch (Throwable $e) {
+    error_log('Power source lookup failed: ' . $e->getMessage());
+}
+
+$tableRows = [];
+$roomOptions = [];
+
+foreach ($equipmentRows as $asset) {
+    $rawLocation = (string)($asset['location'] ?? '');
+    [$floor, $room] = equipment_split_location($rawLocation, $floorList);
+
+    $floorLabel = $floor === 'Ground' ? 'Ground Floor' : $floor;
+    $locationLabel = $floor !== '' ? $room : $rawLocation;
+
+    $powerSource = $asset['power_source'] ?? ($powerById[(int)$asset['id']] ?? null);
+
+    if ($locationLabel !== '') {
+        $roomOptions[strtolower($locationLabel)] = $locationLabel;
+    }
+
+    $tableRows[] = [
+        'id' => (int)$asset['id'],
+        'name' => (string)($asset['name'] ?? ''),
+        'floor' => $floorLabel !== '' ? $floorLabel : 'N/A',
+        'location' => $locationLabel !== '' ? $locationLabel : 'N/A',
+        'power_source' => ($powerSource !== null && $powerSource !== '') ? (string)$powerSource : 'N/A',
+        'condition' => (string)($asset['condition'] ?? 'Unknown'),
+    ];
+}
+
+asort($roomOptions, SORT_NATURAL | SORT_FLAG_CASE);
+
+if (!function_exists('lh')) {
+    function lh($value): string
+    {
+        return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+    }
+}
 ?>
 
 <?php include 'sidebar.php'; ?>
@@ -100,21 +160,21 @@ $equipmentRows = fetch_equipment(
 
     <?php if ($message !== ''): ?>
         <div class="mb-4 rounded-md bg-green-100 p-3 text-sm text-green-800">
-            <?= htmlspecialchars($message, ENT_QUOTES, 'UTF-8') ?>
+            <?= lh($message) ?>
         </div>
     <?php endif; ?>
 
     <?php if ($error !== ''): ?>
         <div class="mb-4 rounded-md bg-red-100 p-3 text-sm text-red-700">
-            <?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?>
+            <?= lh($error) ?>
         </div>
     <?php endif; ?>
 
     <div class="equipment-toolbar">
 
-        <div class="equipment-filters">
+        <div class="equipment-filters" style="display:flex;flex-wrap:nowrap;align-items:center;gap:8px;min-width:0;">
 
-            <div class="equipment-search">
+            <div class="equipment-search" style="flex:0 0 180px;width:180px;min-width:0;">
                 <div class="relative flex items-center">
 
                     <i class="fa-solid fa-magnifying-glass absolute w-5 h-5 top-2.5 left-2.5 text-slate-600"></i>
@@ -129,33 +189,44 @@ $equipmentRows = fetch_equipment(
             </div>
 
             <select
-                id="locationFilter"
+                id="floorFilter"
+                style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Locations</option>
-                <option value="main building">Main Building</option>
-                <option value="building a">Building A</option>
-                <option value="building b">Building B</option>
+                <option value="all">All Floors</option>
+                <option value="ground floor">Ground Floor</option>
+                <option value="2nd floor">2nd Floor</option>
+                <option value="3rd floor">3rd Floor</option>
+                <option value="4th floor">4th Floor</option>
 
             </select>
 
-            <!-- comment ko lang to
-                <select
-                    id="floorFilter"
-                    class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
+            <select
+                id="locationFilter"
+                style="flex:0 0 auto;max-width:150px;"
+                class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                    <option value="all">All Floors</option>
-                    <option value="ground floor">Ground Floor</option>
-                    <option value="basement">Basement</option>
-                    <option value="1st floor">1st Floor</option>
-                    <option value="2nd floor">2nd Floor</option>
-                    <option value="3rd floor">3rd Floor</option>
-                    <option value="4th floor">4th Floor</option>
-                </select>
-            -->
+                <option value="all">All Locations</option>
+                <?php foreach ($roomOptions as $roomValue => $roomLabel): ?>
+                    <option value="<?= lh($roomValue) ?>"><?= lh($roomLabel) ?></option>
+                <?php endforeach; ?>
+
+            </select>
+
+            <select
+                id="powerFilter"
+                style="flex:0 0 auto;max-width:150px;"
+                class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
+
+                <option value="all">All Power Sources</option>
+                <option value="electric">Electric</option>
+                <option value="non-electric">Non-electric</option>
+
+            </select>
 
             <select
                 id="conditionFilter"
+                style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
                 <option value="all">All Conditions</option>
@@ -165,7 +236,7 @@ $equipmentRows = fetch_equipment(
 
             </select>
 
-            <button type="button" id="clearFilters" class="clear-filters-btn">
+            <button type="button" id="clearFilters" class="clear-filters-btn" style="flex:0 0 auto;white-space:nowrap;">
                 Clear Filters
             </button>
 
@@ -190,8 +261,8 @@ $equipmentRows = fetch_equipment(
                 <tr>
                     <th><i class="fa-solid fa-id-card"></i> ID</th>
                     <th><i class="fa-solid fa-tag"></i> Name</th>
+                    <th><i class="fa-solid fa-building"></i> Floor</th>
                     <th><i class="fa-solid fa-location-dot"></i> Location</th>
-                    <!-- <th><i class="fa-solid fa-building"></i> Floor</th> comment ko lang to-->
                     <th><i class="fa-solid fa-shield-halved"></i> Condition</th>
                     <th><i class="fa-solid fa-gear"></i> Actions</th>
                 </tr>
@@ -199,7 +270,7 @@ $equipmentRows = fetch_equipment(
 
             <tbody>
 
-                <?php if (empty($equipmentRows)): ?>
+                <?php if (empty($tableRows)): ?>
 
                     <tr>
                         <td colspan="100%" class="text-center py-6">
@@ -209,55 +280,24 @@ $equipmentRows = fetch_equipment(
 
                 <?php else: ?>
 
-                    <?php foreach ($equipmentRows as $asset): ?>
+                    <?php foreach ($tableRows as $asset): ?>
 
-                        <tr>
+                        <tr data-power="<?= lh(strtolower($asset['power_source'])) ?>">
 
                             <td>
-                                <?= 'EQ-' . str_pad(
-                                    (string)$asset['id'],
-                                    3,
-                                    '0',
-                                    STR_PAD_LEFT
-                                ) ?>
+                                <?= 'EQ-' . str_pad((string)$asset['id'], 3, '0', STR_PAD_LEFT) ?>
                             </td>
 
-                            <td>
-                                <?= htmlspecialchars(
-                                    (string)($asset['name'] ?? ''),
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </td>
+                            <td><?= lh($asset['name']) ?></td>
+
+                            <td><?= lh($asset['floor']) ?></td>
+
+                            <td><?= lh($asset['location']) ?></td>
 
                             <td>
-                                <?= htmlspecialchars(
-                                    (string)($asset['location'] ?? ''),
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </td>
-
-                       <!-- comment ko lang to
-                            <td>
-                                <?= htmlspecialchars(
-                                    (string)($asset['floor'] ?? ''),
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>
-                            </td>
-                        -->
-
-                            <td>
-                                <span class="condition <?= strtolower((string)($asset['condition'] ?? 'unknown')) ?>">
+                                <span class="condition <?= lh(strtolower($asset['condition'])) ?>">
                                     <span></span>
-
-                                    <?= htmlspecialchars(
-                                        (string)($asset['condition'] ?? 'Unknown'),
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>
-
+                                    <?= lh($asset['condition']) ?>
                                 </span>
                             </td>
 
@@ -311,8 +351,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const ROWS_PER_PAGE = 10;
 
     const searchInput = document.getElementById('equipmentSearch');
-    const conditionFilter = document.getElementById('conditionFilter');
+    const floorFilter = document.getElementById('floorFilter');
     const locationFilter = document.getElementById('locationFilter');
+    const powerFilter = document.getElementById('powerFilter');
+    const conditionFilter = document.getElementById('conditionFilter');
     const clearFilters = document.getElementById('clearFilters');
 
     const tbody = document.querySelector('.equipment-table tbody');
@@ -326,26 +368,69 @@ document.addEventListener('DOMContentLoaded', function() {
         return !row.querySelector('td[colspan]');
     });
 
+    if (allRows.length === 0) return;
+
     let filteredRows = [...allRows];
     let currentPage = 1;
 
     const emptyRow = document.createElement('tr');
 
     emptyRow.innerHTML =
-        '<td colspan="5" style="text-align:center;padding:1rem;">No equipment found.</td>';
+        '<td colspan="6" style="text-align:center;padding:1rem;">No equipment found.</td>';
 
     emptyRow.style.display = 'none';
     tbody.appendChild(emptyRow);
 
+    const allRooms = new Map();
+    const roomsByFloor = {};
+
+    allRows.forEach(function(row) {
+        const floorKey = row.cells[2].textContent.trim().toLowerCase();
+        const label = row.cells[3].textContent.trim();
+
+        if (!label || label === 'N/A') return;
+
+        const key = label.toLowerCase();
+        allRooms.set(key, label);
+
+        if (!roomsByFloor[floorKey]) roomsByFloor[floorKey] = new Map();
+        roomsByFloor[floorKey].set(key, label);
+    });
+
+    function populateLocations() {
+        const floor = floorFilter.value.toLowerCase();
+        const source = floor === 'all' ? allRooms : (roomsByFloor[floor] || new Map());
+        const previous = locationFilter.value;
+
+        locationFilter.replaceChildren(new Option('All Locations', 'all'));
+
+        Array.from(source.entries())
+            .sort(function(a, b) {
+                return a[1].localeCompare(b[1], undefined, {
+                    numeric: true,
+                    sensitivity: 'base'
+                });
+            })
+            .forEach(function(entry) {
+                locationFilter.appendChild(new Option(entry[1], entry[0]));
+            });
+
+        locationFilter.value = source.has(previous) ? previous : 'all';
+    }
+
     function applyFilters() {
         const query = searchInput.value.trim().toLowerCase();
-        const condition = conditionFilter.value.toLowerCase();
+        const floor = floorFilter.value.toLowerCase();
         const location = locationFilter.value.toLowerCase();
+        const power = powerFilter.value.toLowerCase();
+        const condition = conditionFilter.value.toLowerCase();
 
         filteredRows = allRows.filter(function(row) {
             const id = row.cells[0].textContent.trim().toLowerCase();
             const name = row.cells[1].textContent.trim().toLowerCase();
-            const rowLocation = row.cells[2].textContent.trim().toLowerCase();
+            const rowFloor = row.cells[2].textContent.trim().toLowerCase();
+            const rowLocation = row.cells[3].textContent.trim().toLowerCase();
+            const rowPower = (row.dataset.power || '').toLowerCase();
 
             const conditionElement = row.querySelector('.condition');
 
@@ -355,17 +440,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }) || ''
                 : '';
 
-            const matchesSearch = [id, name, rowLocation].some(function(value) {
+            const matchesSearch = [id, name, rowFloor, rowLocation].some(function(value) {
                 return value.includes(query);
             });
 
-            const matchesCondition =
-                condition === 'all' || rowCondition === condition;
+            const matchesFloor = floor === 'all' || rowFloor === floor;
+            const matchesLocation = location === 'all' || rowLocation === location;
+            const matchesPower = power === 'all' || rowPower === power;
+            const matchesCondition = condition === 'all' || rowCondition === condition;
 
-            const matchesLocation =
-                location === 'all' || rowLocation === location;
-
-            return matchesSearch && matchesCondition && matchesLocation;
+            return matchesSearch && matchesFloor && matchesLocation && matchesPower && matchesCondition;
         });
 
         currentPage = 1;
@@ -450,17 +534,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     searchInput.addEventListener('input', applyFilters);
-    conditionFilter.addEventListener('change', applyFilters);
+    floorFilter.addEventListener('change', function() {
+        populateLocations();
+        applyFilters();
+    });
     locationFilter.addEventListener('change', applyFilters);
+    powerFilter.addEventListener('change', applyFilters);
+    conditionFilter.addEventListener('change', applyFilters);
 
     clearFilters.addEventListener('click', function() {
         searchInput.value = '';
+        floorFilter.value = 'all';
+        populateLocations();
         locationFilter.value = 'all';
+        powerFilter.value = 'all';
         conditionFilter.value = 'all';
 
         applyFilters();
     });
 
+    populateLocations();
     render();
 });
 </script>

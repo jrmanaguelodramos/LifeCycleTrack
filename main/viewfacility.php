@@ -1,4 +1,5 @@
 <?php
+
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
 }
@@ -51,6 +52,7 @@ if ($facilityId && $facilityId > 0) {
                 'remarks' => $row['remarks']
             ];
         }
+
     } catch (Throwable $e) {
         error_log('View facility error: ' . $e->getMessage());
     }
@@ -84,6 +86,7 @@ $acquisitionYear = $facility['year'] ?? null;
 $facilityAge = $acquisitionYear
     ? max(0, (int) date('Y') - (int) $acquisitionYear) . ' year(s)'
     : null;
+
 ?>
 
 <!DOCTYPE html>
@@ -92,28 +95,61 @@ $facilityAge = $acquisitionYear
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Facility Profile / Information</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../dist/output.css">
     <link rel="stylesheet" href="../css/sidebar.css">
+
+    <style>
+        #imageModal {
+            backdrop-filter: blur(4px);
+        }
+
+        #modalImage {
+            animation: imageZoom 0.25s ease-out;
+        }
+
+        @keyframes imageZoom {
+            from {
+                opacity: 0;
+                transform: scale(0.92);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+    </style>
+
 </head>
 
 <body>
+
     <?php include('sidebar.php'); ?>
 
     <main class="ml-64 p-8">
+
         <nav aria-label="Breadcrumb" class="mb-2">
             <ol class="flex items-center gap-2 text-sm text-slate-500 [&_a:hover]:text-blue-900 [&_a:hover]:underline [&_i.sep]:text-[10px] [&_i.sep]:text-slate-300">
+
                 <li>
                     <a href="facilities_list.php" class="block max-w-[200px] no-underline hover:underline mr-2 truncate">
                         <i class="fa-regular fa-building mr-2"></i>Facilities List
                     </a>
                 </li>
+
                 <li aria-hidden="true">
                     <i class="sep fa-solid fa-chevron-right mr-2"></i>
                 </li>
-                <li aria-current="page" class="font-medium text-blue-900">Information</li>
+
+                <li aria-current="page" class="font-medium text-blue-900">
+                    Information
+                </li>
+
             </ol>
         </nav>
 
@@ -134,13 +170,16 @@ $facilityAge = $acquisitionYear
         <?php else: ?>
 
             <div class="min-w-0 p-3">
-                <div class="mt-2 w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <div class="mb-5 flex flex-wrap items-start gap-4">
 
+                <div class="mt-2 w-full rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+
+                    <div class="mb-5 flex flex-wrap items-start gap-4">
                         <img
                             src="<?= escapeHtml($facility['image'] ?? '../img/logo.png') ?>"
                             alt="<?= escapeHtml($facility['name']) ?>"
-                            class="h-28 w-38 shrink-0 rounded-md border border-gray-200 object-contain p-2 shadow-sm">
+                            onclick="openImageModal(this.src, this.alt)"
+                            class="h-28 w-38 shrink-0 cursor-pointer rounded-md border border-gray-200 object-contain p-2 shadow-sm transition hover:scale-105 hover:shadow-md"
+                            title="Click to view full screen">
 
                         <div class="min-w-0 flex-1">
 
@@ -163,20 +202,26 @@ $facilityAge = $acquisitionYear
 
                             <a href="edit_facility.php?id=<?= (int) $facility['id'] ?>"
                                 class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
+
                                 <i class="fa-solid fa-pen"></i>
                                 Edit Information
+
                             </a>
 
                             <a href="facility_logs.php?id=<?= (int) $facility['id'] ?>"
                                 class="inline-flex items-center gap-2 rounded-md bg-[#155B92] px-4 py-2 text-sm font-semibold text-white hover:bg-[#103F6C]">
+
                                 <i class="fa-solid fa-clock-rotate-left"></i>
                                 Condition History
+
                             </a>
 
                         </div>
+
                     </div>
 
                     <section class="mb-3 rounded-md border border-slate-300 bg-white p-4">
+
                         <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
                             <i class="fa-solid fa-circle-info"></i>
                             Facility Information
@@ -220,12 +265,15 @@ $facilityAge = $acquisitionYear
                                 </div>
 
                             </div>
+
                         </div>
+
                     </section>
 
                     <div class="mb-3 grid grid-cols-1 items-stretch gap-3 lg:grid-cols-2">
 
                         <section class="min-w-0 rounded-md border border-slate-300 bg-white p-4">
+
                             <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
                                 <i class="fa-solid fa-calendar-days"></i>
                                 Acquisition Information
@@ -248,24 +296,91 @@ $facilityAge = $acquisitionYear
                                 </div>
 
                             </div>
+
                         </section>
 
                         <section class="min-w-0 rounded-md border border-slate-300 bg-white p-4">
+
                             <h3 class="mb-4 flex items-center gap-2 text-lg font-bold text-[#103F6C]">
                                 <i class="fa-solid fa-note-sticky"></i>
                                 Remarks
                             </h3>
 
                             <div class="min-h-28 flex-1 whitespace-pre-wrap rounded-md border border-gray-200 bg-gray-50 p-3 text-sm leading-relaxed text-gray-600"><?= escapeHtml($facility['remarks'] ?: 'No additional remarks recorded for this facility.') ?></div>
+
                         </section>
 
                     </div>
+
                 </div>
+
             </div>
 
         <?php endif; ?>
 
     </main>
+
+     <div
+        id="imageModal"
+        class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/90 p-6"
+        onclick="closeImageModal()">
+
+        <button type="button" onclick="closeImageModal()"  class="absolute right-6 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full text-4xl text-white transition hover:bg-white/20 hover:text-gray-300"
+         aria-label="Close image preview">
+            &times;
+        </button>
+
+       <img
+        id="modalImage"
+        src=""
+        alt=""
+        onclick="event.stopPropagation()"
+        style="
+            width: auto !important;
+            height: auto !important;
+            max-width: 75vw !important;
+            max-height: 70vh !important;
+            object-fit: contain !important;
+            display: block;
+        "
+        class="rounded-lg shadow-2xl">
+
+    </div>
+    
+    <script>
+        function openImageModal(src, alt) {
+
+            const modal = document.getElementById('imageModal');
+            const image = document.getElementById('modalImage');
+
+            image.src = src;
+            image.alt = alt;
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImageModal() {
+
+            const modal = document.getElementById('imageModal');
+
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+
+            document.body.style.overflow = '';
+
+        }
+
+        document.addEventListener('keydown', function(event) {
+
+            if (event.key === 'Escape') {
+                closeImageModal();
+            }
+
+        });
+    </script>
 
 </body>
 

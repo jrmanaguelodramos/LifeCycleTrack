@@ -85,8 +85,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $remarks !== '' ? PDO::PARAM_STR : PDO::PARAM_NULL
         );
         $stmt->execute();
-<<<<<<< Updated upstream
-=======
 
         $facilityId = (string) $stmt->fetchColumn();
         lifecycle_central_enqueue($pdo, lifecycle_central_payload([
@@ -95,7 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ], 'facility'));
         $pdo->commit();
         lifecycle_central_flush($pdo);
->>>>>>> Stashed changes
 
         $_SESSION['facilityAddedToast'] = true;
         header('Location: facilities_list.php');

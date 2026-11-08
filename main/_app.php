@@ -6,10 +6,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/../config/database.php';
-<<<<<<< Updated upstream
-=======
 require_once __DIR__ . '/../config/central_sync.php';
->>>>>>> Stashed changes
 
 if (!function_exists('e')) {
     function e($value) {

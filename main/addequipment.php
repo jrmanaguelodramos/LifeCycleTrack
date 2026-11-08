@@ -63,6 +63,7 @@ function ev($value): string
 $values = [
     'name' => '',
     'kind' => '',
+    'power_source' => '',
     'category' => '',
     'brand' => '',
     'model' => '',
@@ -114,8 +115,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($name === '' || mb_strlen($name) > 255)
             throw new RuntimeException('Enter an equipment name with no more than 255 characters.');
 
-        if (!in_array($kind, ['Movable', 'Fixed'], true))
+        if (!in_array($kind, ['Movable Asset', 'Fixed Asset'], true))
             throw new RuntimeException('Select a valid asset type.');
+
+        if (!in_array($power_source, ['Electric', 'Non-electric'], true))
+            throw new RuntimeException('Select a valid power source.');
 
         if (!in_array($category, [
             'Fire equipment',
@@ -123,6 +127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'Office, facility or utility equipment'
         ], true))
             throw new RuntimeException('Select a valid equipment category.');
+
         if ($location === '')
             throw new RuntimeException('Select an assigned office or location.');
 
@@ -226,6 +231,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 brand,
                 model,
                 category,
+                asset_type,
+                power_source,
                 location,
                 date_acquired,
                 acquisition_year,
@@ -246,6 +253,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :brand,
                 :model,
                 :category,
+                :asset_type,
+                :power_source,
                 :location,
                 :date_acquired,
                 :acquisition_year,
@@ -260,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :details_name,
                 :remarks,
                 :image_url
-            )'
+            ) RETURNING id'
         );
 
         $stmt->execute([
@@ -269,6 +278,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'brand' => $brand !== '' ? $brand : null,
             'model' => $model !== '' ? $model : null,
             'category' => $category,
+            'asset_type' => $kind,
+            'power_source' => $power_source,
             'location' => $location,
             'date_acquired' => sprintf('%04d-01-01', $year),
             'acquisition_year' => $year,
@@ -284,10 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'remarks' => $remarks !== '' ? $remarks : null,
             'image_url' => $imageUrl
         ]);
-<<<<<<< Updated upstream
-
-        $pdo->commit();
-=======
 
         $equipmentId = (string) $stmt->fetchColumn();
         lifecycle_central_enqueue($pdo, lifecycle_central_payload([
@@ -297,6 +304,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'brand' => $brand,
             'model' => $model,
             'category' => $category,
+            'asset_type' => $kind,
+            'power_source' => $power_source,
             'location' => $location,
             'date_acquired' => sprintf('%04d-01-01', $year),
             'acquisition_year' => $year,
@@ -312,7 +321,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $pdo->commit();
         lifecycle_central_flush($pdo);
->>>>>>> Stashed changes
 
         $_SESSION['equipmentAddedToast'] = true;
         header('Location: equipments_list.php');
@@ -400,16 +408,6 @@ $equipmentAge = !empty($values['year']) &&
                 </div>
 
                 <div>
-                    <label for="kind" class="mb-1 block text-sm font-medium text-gray-700">Asset Type <span class="text-red-500">*</span></label>
-                    <select id="kind" name="kind" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
-                        <option value="">Select asset type</option>
-                        <?php foreach (['Movable' => 'Movable asset', 'Fixed' => 'Fixed asset'] as $value => $label): ?>
-                            <option value="<?= ev($value) ?>" <?= $values['kind'] === $value ? ' selected' : '' ?>><?= ev($label) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div>
                     <label for="category" class="mb-1 block text-sm font-medium text-gray-700">Equipment Category <span class="text-red-500">*</span></label>
                     <select id="category" name="category" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                         <option value="">Select category</option>
@@ -442,7 +440,6 @@ $equipmentAge = !empty($values['year']) &&
                     </select>
                 </div>
 
-
                 <div>
                     <label for="room" class="mb-1 block text-sm font-medium text-gray-700">
                         Assigned Room <span class="text-red-500">*</span>
@@ -461,11 +458,30 @@ $equipmentAge = !empty($values['year']) &&
                     </p>
                 </div>
 
-
                 <div>
                     <label for="quantity" class="mb-1 block text-sm font-medium text-gray-700">Quantity</label>
                     <input id="quantity" name="quantity" type="number" min="1" step="1" value="<?= ev($values['quantity']) ?>" placeholder="e.g. 30" class="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
                     <p class="mt-1 text-xs text-gray-500">For multiple identical items.</p>
+                </div>
+
+                <div>
+                    <label for="kind" class="mb-1 block text-sm font-medium text-gray-700">Asset Type <span class="text-red-500">*</span></label>
+                    <select id="kind" name="kind" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
+                        <option value="">Select asset type</option>
+                        <?php foreach (['Movable Asset' => 'Movable asset', 'Fixed Asset' => 'Fixed asset'] as $value => $label): ?>
+                            <option value="<?= ev($value) ?>" <?= $values['kind'] === $value ? ' selected' : '' ?>><?= ev($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="power_source" class="mb-1 block text-sm font-medium text-gray-700">Power Source <span class="text-red-500">*</span></label>
+                    <select id="power_source" name="power_source" required class="w-full cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-gray-800 focus:border-[#155B92] focus:outline-none">
+                        <option value="">Select power source</option>
+                        <?php foreach (['Electric' => 'Electric', 'Non-electric' => 'Non-electric'] as $value => $label): ?>
+                            <option value="<?= ev($value) ?>" <?= $values['power_source'] === $value ? ' selected' : '' ?>><?= ev($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
 
@@ -617,25 +633,16 @@ $equipmentAge = !empty($values['year']) &&
 
         roomSelect.parentElement.addEventListener('click', function() {
             if (!floorSelect.value) {
-                // Highlight the floor selector
                 floorSelect.classList.remove('border-slate-300');
                 floorSelect.classList.add('border-red-500', 'ring-1', 'ring-red-500');
-
-                // Show the existing warning toast
                 showToast('Please select an Assigned Floor first.');
             }
         });
 
         floorSelect.addEventListener('change', function() {
             if (floorSelect.value) {
-                floorSelect.classList.remove(
-                    'border-red-500',
-                    'ring-2',
-                    'ring-red-200'
-                );
-
-                floorLabel.classList.remove('text-red-600');
-                floorLabel.classList.add('text-gray-700');
+                floorSelect.classList.remove('border-red-500', 'ring-1', 'ring-red-500');
+                floorSelect.classList.add('border-slate-300');
             }
         });
 
@@ -728,6 +735,7 @@ $equipmentAge = !empty($values['year']) &&
                 `${new Date().getFullYear() - year} year(s)` :
                 '';
         }
+
         async function loadRooms() {
             const floor = floorSelect.value;
             const requestId = ++roomRequestId;
