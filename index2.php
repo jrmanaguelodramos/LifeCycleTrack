@@ -15,7 +15,7 @@ $httpStatus = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $workOrder = [
-        'work_order_id' => trim((string) ($_POST['work_order_id'7] ?? '')),
+        'work_order_id' => trim((string) ($_POST['work_order_id'] ?? '')),
         'asset_id' => trim((string) ($_POST['asset_id'] ?? '')),
         'status' => trim((string) ($_POST['status'] ?? '')),
         'description' => trim((string) ($_POST['description'] ?? '')),

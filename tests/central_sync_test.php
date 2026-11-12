@@ -16,7 +16,7 @@ $payload = lifecycle_central_payload([
     'remarks' => 'contains personal notes',
 ], 'equipment');
 
-if (($payload['id'] ?? null) !== 42 || ($payload['entity_type'] ?? '') !== 'equipment'
+if (($payload['id'] ?? null) !== '42' || ($payload['entity_type'] ?? '') !== 'equipment'
     || ($payload['lifecycle_status'] ?? '') !== 'Serviceable' || ($payload['cost'] ?? '') !== '12000.00'
     || ($payload['basis'] ?? '') !== 'Purchase' || ($payload['schedule'] ?? '') !== 'Daily'
     || isset($payload['image_url']) || isset($payload['remarks']) || empty($payload['source_updated_at'])) {

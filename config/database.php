@@ -31,18 +31,22 @@ $username = (string)$env['DB_USERNAME'];
 $password = (string)$env['DB_PASSWORD'];
 
 try {
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require;connect_timeout=5";
+
     $pdo = new PDO(
-        "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require",
+        $dsn,
         $username,
         $password,
         [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 5,
         ]
     );
 
 } catch (PDOException $e) {
     error_log('LifeCycleTrack database connection failed: ' . $e->getMessage());
+
     http_response_code(500);
     exit('The database is temporarily unavailable. Please try again later.');
 }

@@ -88,6 +88,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':id'        => $facilityId,
         ]);
 
+        $syncStmt = $pdo->prepare('SELECT id, name, location, date_acquired, acquisition_year, is_estimated_year, condition, status, retired_at, disposed_at, created_at, updated_at FROM public.facilities WHERE id = :id');
+        $syncStmt->execute([':id' => $facilityId]);
+        $syncRow = $syncStmt->fetch(PDO::FETCH_ASSOC);
+        if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'facility'));
+
         $stmt = $pdo->prepare(
             'INSERT INTO activity_log (facility_id, action, details, actor)
              VALUES (:id, :action, :details, :actor)'
