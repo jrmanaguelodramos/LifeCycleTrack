@@ -113,6 +113,42 @@ function fetch_equipment(PDO $pdo, string $search = '', string $condition = ''):
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+function fetch_equipment_page(PDO $pdo, string $search, string $condition, string $floor, string $location, string $power, int $page, int $pageSize = 25): array
+{
+    $filters = [];
+    $params = [];
+    if ($search !== '') {
+        $filters[] = '(e.name ILIKE :search_name OR e.brand ILIKE :search_brand OR e.model ILIKE :search_model OR e.id::text ILIKE :search_id OR (\'EQ-\' || LPAD(e.id::text, 3, \'0\')) ILIKE :search_code)';
+        $pattern = '%' . $search . '%';
+        foreach (['search_name', 'search_brand', 'search_model', 'search_id', 'search_code'] as $key) $params[$key] = $pattern;
+    }
+    if ($condition !== '') { $filters[] = 'LOWER(e.condition) = LOWER(:condition)'; $params['condition'] = $condition; }
+    if ($floor !== '') {
+        $filters[] = "CASE WHEN e.location ILIKE 'Ground - %' THEN 'Ground Floor' WHEN e.location ILIKE '% Floor - %' THEN split_part(e.location, ' - ', 1) ELSE 'N/A' END ILIKE :floor";
+        $params['floor'] = $floor;
+    }
+    if ($location !== '') {
+        $locationExpression = "CASE WHEN e.location ILIKE 'Ground - %' OR e.location ILIKE '2nd Floor - %' OR e.location ILIKE '3rd Floor - %' OR e.location ILIKE '4th Floor - %' THEN split_part(e.location, ' - ', 2) ELSE e.location END";
+        $filters[] = $locationExpression . ' ILIKE :location';
+        $params['location'] = $location;
+    }
+    if ($power !== '') { $filters[] = "e.power_source ILIKE :power"; $params['power'] = $power; }
+    $where = $filters ? ' WHERE ' . implode(' AND ', $filters) : '';
+
+    $count = $pdo->prepare('SELECT COUNT(*) FROM public.equipment e' . $where);
+    $count->execute($params);
+    $total = (int) $count->fetchColumn();
+    $pageSize = max(1, min(100, $pageSize));
+    $totalPages = max(1, (int) ceil($total / $pageSize));
+    $page = max(1, min($page, $totalPages));
+    $stmt = $pdo->prepare('SELECT e.*, f.name AS facility_name FROM public.equipment e LEFT JOIN public.facilities f ON f.id=e.facility_id' . $where . ' ORDER BY e.id DESC LIMIT :limit OFFSET :offset');
+    foreach ($params as $key => $value) $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', ($page - 1) * $pageSize, PDO::PARAM_INT);
+    $stmt->execute();
+    return ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'page' => $page, 'total_pages' => $totalPages];
+}
+
 function asset_by_id(PDO $pdo, int $id): ?array {
     $stmt = $pdo->prepare('SELECT * FROM assets WHERE id = :id');
     $stmt->execute([':id' => $id]);
@@ -206,6 +242,32 @@ function facilities_list(PDO $pdo, string $search = '', string $condition = ''):
     $stmt->execute($params);
 
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function facilities_list_page(PDO $pdo, string $search, string $condition, string $floor, int $page, int $pageSize = 25): array
+{
+    $filters = [];
+    $params = [];
+    if ($search !== '') {
+        $filters[] = '(name ILIKE :name_search OR location ILIKE :location_search OR id::text ILIKE :id_search OR (\'FA-\' || LPAD(id::text, 3, \'0\')) ILIKE :id_code_search)';
+        $pattern = '%' . $search . '%';
+        $params = ['name_search' => $pattern, 'location_search' => $pattern, 'id_search' => $pattern, 'id_code_search' => $pattern];
+    }
+    if ($condition !== '') { $filters[] = 'LOWER(condition) = LOWER(:condition)'; $params['condition'] = $condition; }
+    if ($floor !== '') { $filters[] = 'location ILIKE :floor'; $params['floor'] = '%' . $floor . '%'; }
+    $where = $filters ? ' WHERE ' . implode(' AND ', $filters) : '';
+    $count = $pdo->prepare('SELECT COUNT(*) FROM public.facilities' . $where);
+    $count->execute($params);
+    $total = (int) $count->fetchColumn();
+    $pageSize = max(1, min(100, $pageSize));
+    $totalPages = max(1, (int) ceil($total / $pageSize));
+    $page = max(1, min($page, $totalPages));
+    $stmt = $pdo->prepare('SELECT * FROM public.facilities' . $where . ' ORDER BY id DESC LIMIT :limit OFFSET :offset');
+    foreach ($params as $key => $value) $stmt->bindValue(':' . $key, $value, PDO::PARAM_STR);
+    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', ($page - 1) * $pageSize, PDO::PARAM_INT);
+    $stmt->execute();
+    return ['rows' => $stmt->fetchAll(PDO::FETCH_ASSOC), 'total' => $total, 'page' => $page, 'total_pages' => $totalPages];
 }
 
 function save_facility(PDO $pdo, array $data): int

@@ -80,12 +80,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $search = trim((string)($_GET['search'] ?? ''));
 $filterCondition = trim((string)($_GET['condition'] ?? ''));
-
-$equipmentRows = fetch_equipment(
-    $pdo,
-    $search,
-    $filterCondition
-);
+$filterFloor = trim((string)($_GET['floor'] ?? ''));
+$filterLocation = trim((string)($_GET['location'] ?? ''));
+$filterPower = trim((string)($_GET['power'] ?? ''));
+$equipmentPage = fetch_equipment_page($pdo, $search, $filterCondition, $filterFloor, $filterLocation, $filterPower, (int)($_GET['page'] ?? 1));
+$equipmentRows = $equipmentPage['rows'];
+$equipmentQuery = ['search' => $search, 'condition' => $filterCondition, 'floor' => $filterFloor, 'location' => $filterLocation, 'power' => $filterPower];
+$equipmentPageUrl = static function (int $page) use ($equipmentQuery): string {
+    return '?' . http_build_query(array_filter($equipmentQuery, static fn($value) => $value !== '') + ['page' => $page]);
+};
 
 if (!function_exists('equipment_split_location')) {
     function equipment_split_location(string $location, array $floors): array
@@ -103,17 +106,24 @@ if (!function_exists('equipment_split_location')) {
 
 $floorList = ['Ground', '2nd Floor', '3rd Floor', '4th Floor'];
 
-$powerById = [];
-try {
-    foreach ($pdo->query('SELECT id, power_source FROM public.equipment') as $powerRow) {
-        $powerById[(int)$powerRow['id']] = $powerRow['power_source'];
-    }
-} catch (Throwable $e) {
-    error_log('Power source lookup failed: ' . $e->getMessage());
-}
-
 $tableRows = [];
 $roomOptions = [];
+$roomQuery = $pdo->query(
+    "SELECT DISTINCT
+        CASE
+            WHEN location ILIKE 'Ground - %' OR location ILIKE '2nd Floor - %'
+              OR location ILIKE '3rd Floor - %' OR location ILIKE '4th Floor - %'
+            THEN split_part(location, ' - ', 2)
+            ELSE location
+        END AS room
+     FROM public.equipment
+     WHERE NULLIF(BTRIM(location), '') IS NOT NULL
+     ORDER BY room"
+);
+foreach ($roomQuery->fetchAll(PDO::FETCH_COLUMN) as $room) {
+    $room = trim((string) $room);
+    if ($room !== '') $roomOptions[strtolower($room)] = $room;
+}
 
 foreach ($equipmentRows as $asset) {
     $rawLocation = (string)($asset['location'] ?? '');
@@ -122,11 +132,7 @@ foreach ($equipmentRows as $asset) {
     $floorLabel = $floor === 'Ground' ? 'Ground Floor' : $floor;
     $locationLabel = $floor !== '' ? $room : $rawLocation;
 
-    $powerSource = $asset['power_source'] ?? ($powerById[(int)$asset['id']] ?? null);
-
-    if ($locationLabel !== '') {
-        $roomOptions[strtolower($locationLabel)] = $locationLabel;
-    }
+    $powerSource = $asset['power_source'] ?? null;
 
     $tableRows[] = [
         'id' => (int)$asset['id'],
@@ -182,6 +188,7 @@ if (!function_exists('lh')) {
                     <input
                         id="equipmentSearch"
                         type="search"
+                        value="<?= lh($search) ?>"
                         class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
                         placeholder="Search by name or id..." />
 
@@ -193,11 +200,11 @@ if (!function_exists('lh')) {
                 style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Floors</option>
-                <option value="ground floor">Ground Floor</option>
-                <option value="2nd floor">2nd Floor</option>
-                <option value="3rd floor">3rd Floor</option>
-                <option value="4th floor">4th Floor</option>
+                <option value="all" <?= $filterFloor === '' ? 'selected' : '' ?>>All Floors</option>
+                <option value="ground floor" <?= strtolower($filterFloor) === 'ground floor' ? 'selected' : '' ?>>Ground Floor</option>
+                <option value="2nd floor" <?= strtolower($filterFloor) === '2nd floor' ? 'selected' : '' ?>>2nd Floor</option>
+                <option value="3rd floor" <?= strtolower($filterFloor) === '3rd floor' ? 'selected' : '' ?>>3rd Floor</option>
+                <option value="4th floor" <?= strtolower($filterFloor) === '4th floor' ? 'selected' : '' ?>>4th Floor</option>
 
             </select>
 
@@ -206,9 +213,9 @@ if (!function_exists('lh')) {
                 style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Locations</option>
+                <option value="all" <?= $filterLocation === '' ? 'selected' : '' ?>>All Locations</option>
                 <?php foreach ($roomOptions as $roomValue => $roomLabel): ?>
-                    <option value="<?= lh($roomValue) ?>"><?= lh($roomLabel) ?></option>
+                    <option value="<?= lh($roomValue) ?>" <?= strtolower($filterLocation) === strtolower($roomValue) ? 'selected' : '' ?>><?= lh($roomLabel) ?></option>
                 <?php endforeach; ?>
 
             </select>
@@ -218,9 +225,9 @@ if (!function_exists('lh')) {
                 style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Power Sources</option>
-                <option value="electric">Electric</option>
-                <option value="non-electric">Non-electric</option>
+                <option value="all" <?= $filterPower === '' ? 'selected' : '' ?>>All Power Sources</option>
+                <option value="electric" <?= strtolower($filterPower) === 'electric' ? 'selected' : '' ?>>Electric</option>
+                <option value="non-electric" <?= strtolower($filterPower) === 'non-electric' ? 'selected' : '' ?>>Non-electric</option>
 
             </select>
 
@@ -229,10 +236,10 @@ if (!function_exists('lh')) {
                 style="flex:0 0 auto;max-width:150px;"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Conditions</option>
-                <option value="good">Good</option>
-                <option value="fair">Fair</option>
-                <option value="poor">Poor</option>
+                <option value="all" <?= $filterCondition === '' ? 'selected' : '' ?>>All Conditions</option>
+                <option value="good" <?= strtolower($filterCondition) === 'good' ? 'selected' : '' ?>>Good</option>
+                <option value="fair" <?= strtolower($filterCondition) === 'fair' ? 'selected' : '' ?>>Fair</option>
+                <option value="poor" <?= strtolower($filterCondition) === 'poor' ? 'selected' : '' ?>>Poor</option>
 
             </select>
 
@@ -326,30 +333,16 @@ if (!function_exists('lh')) {
 
     </div>
 
-    <div class="pagination">
-
-        <button type="button" class="pagination-btn">
-            <i class="fa-solid fa-chevron-left"></i>
-            Previous
-        </button>
-
-        <button type="button" class="pagination-number active">
-            1
-        </button>
-
-        <button type="button" class="pagination-btn">
-            Next
-            <i class="fa-solid fa-chevron-right"></i>
-        </button>
-
+    <div class="pagination" aria-label="Equipment pages">
+        <a class="pagination-btn" href="<?= lh($equipmentPageUrl(max(1, $equipmentPage['page'] - 1))) ?>" <?= $equipmentPage['page'] <= 1 ? 'aria-disabled="true" tabindex="-1" style="opacity:.5;pointer-events:none"' : '' ?>>Previous</a>
+        <span>Page <?= (int)$equipmentPage['page'] ?> of <?= (int)$equipmentPage['total_pages'] ?> · <?= (int)$equipmentPage['total'] ?> equipment</span>
+        <a class="pagination-btn" href="<?= lh($equipmentPageUrl(min($equipmentPage['total_pages'], $equipmentPage['page'] + 1))) ?>" <?= $equipmentPage['page'] >= $equipmentPage['total_pages'] ? 'aria-disabled="true" tabindex="-1" style="opacity:.5;pointer-events:none"' : '' ?>>Next</a>
     </div>
 
 </main>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const ROWS_PER_PAGE = 10;
-
     const searchInput = document.getElementById('equipmentSearch');
     const floorFilter = document.getElementById('floorFilter');
     const locationFilter = document.getElementById('locationFilter');
@@ -357,204 +350,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const conditionFilter = document.getElementById('conditionFilter');
     const clearFilters = document.getElementById('clearFilters');
 
-    const tbody = document.querySelector('.equipment-table tbody');
-    const pagination = document.querySelector('.pagination');
-
-    const buttons = pagination.querySelectorAll('.pagination-btn');
-    const prevBtn = buttons[0];
-    const nextBtn = buttons[1];
-
-    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(function(row) {
-        return !row.querySelector('td[colspan]');
-    });
-
-    if (allRows.length === 0) return;
-
-    let filteredRows = [...allRows];
-    let currentPage = 1;
-
-    const emptyRow = document.createElement('tr');
-
-    emptyRow.innerHTML =
-        '<td colspan="6" style="text-align:center;padding:1rem;">No equipment found.</td>';
-
-    emptyRow.style.display = 'none';
-    tbody.appendChild(emptyRow);
-
-    const allRooms = new Map();
-    const roomsByFloor = {};
-
-    allRows.forEach(function(row) {
-        const floorKey = row.cells[2].textContent.trim().toLowerCase();
-        const label = row.cells[3].textContent.trim();
-
-        if (!label || label === 'N/A') return;
-
-        const key = label.toLowerCase();
-        allRooms.set(key, label);
-
-        if (!roomsByFloor[floorKey]) roomsByFloor[floorKey] = new Map();
-        roomsByFloor[floorKey].set(key, label);
-    });
-
-    function populateLocations() {
-        const floor = floorFilter.value.toLowerCase();
-        const source = floor === 'all' ? allRooms : (roomsByFloor[floor] || new Map());
-        const previous = locationFilter.value;
-
-        locationFilter.replaceChildren(new Option('All Locations', 'all'));
-
-        Array.from(source.entries())
-            .sort(function(a, b) {
-                return a[1].localeCompare(b[1], undefined, {
-                    numeric: true,
-                    sensitivity: 'base'
-                });
-            })
-            .forEach(function(entry) {
-                locationFilter.appendChild(new Option(entry[1], entry[0]));
-            });
-
-        locationFilter.value = source.has(previous) ? previous : 'all';
-    }
-
-    function applyFilters() {
-        const query = searchInput.value.trim().toLowerCase();
-        const floor = floorFilter.value.toLowerCase();
-        const location = locationFilter.value.toLowerCase();
-        const power = powerFilter.value.toLowerCase();
-        const condition = conditionFilter.value.toLowerCase();
-
-        filteredRows = allRows.filter(function(row) {
-            const id = row.cells[0].textContent.trim().toLowerCase();
-            const name = row.cells[1].textContent.trim().toLowerCase();
-            const rowFloor = row.cells[2].textContent.trim().toLowerCase();
-            const rowLocation = row.cells[3].textContent.trim().toLowerCase();
-            const rowPower = (row.dataset.power || '').toLowerCase();
-
-            const conditionElement = row.querySelector('.condition');
-
-            const rowCondition = conditionElement
-                ? Array.from(conditionElement.classList).find(function(className) {
-                    return ['good', 'fair', 'poor'].includes(className);
-                }) || ''
-                : '';
-
-            const matchesSearch = [id, name, rowFloor, rowLocation].some(function(value) {
-                return value.includes(query);
-            });
-
-            const matchesFloor = floor === 'all' || rowFloor === floor;
-            const matchesLocation = location === 'all' || rowLocation === location;
-            const matchesPower = power === 'all' || rowPower === power;
-            const matchesCondition = condition === 'all' || rowCondition === condition;
-
-            return matchesSearch && matchesFloor && matchesLocation && matchesPower && matchesCondition;
-        });
-
-        currentPage = 1;
-        render();
-    }
-
-    function render() {
-        const totalPages = Math.max(
-            1,
-            Math.ceil(filteredRows.length / ROWS_PER_PAGE)
-        );
-
-        currentPage = Math.min(currentPage, totalPages);
-
-        const start = (currentPage - 1) * ROWS_PER_PAGE;
-
-        allRows.forEach(function(row) {
-            row.style.display = 'none';
-        });
-
-        filteredRows
-            .slice(start, start + ROWS_PER_PAGE)
-            .forEach(function(row) {
-                row.style.display = '';
-            });
-
-        emptyRow.style.display =
-            filteredRows.length === 0 ? '' : 'none';
-
-        renderPagination(totalPages);
-    }
-
-    function renderPagination(totalPages) {
-        pagination.querySelectorAll('.pagination-number').forEach(function(button) {
-            button.remove();
-        });
-
-        for (let i = 1; i <= totalPages; i++) {
-            const button = document.createElement('button');
-
-            button.type = 'button';
-            button.className =
-                'pagination-number' + (i === currentPage ? ' active' : '');
-
-            button.textContent = i;
-
-            button.addEventListener('click', function() {
-                currentPage = i;
-                render();
-            });
-
-            pagination.insertBefore(button, nextBtn);
-        }
-
-        prevBtn.disabled = currentPage === 1;
-        nextBtn.disabled = currentPage === totalPages;
-
-        prevBtn.style.opacity = prevBtn.disabled ? '0.5' : '';
-        nextBtn.style.opacity = nextBtn.disabled ? '0.5' : '';
-
-        prevBtn.style.cursor = prevBtn.disabled ? 'not-allowed' : 'pointer';
-        nextBtn.style.cursor = nextBtn.disabled ? 'not-allowed' : 'pointer';
-    }
-
-    prevBtn.addEventListener('click', function() {
-        if (currentPage > 1) {
-            currentPage--;
-            render();
-        }
-    });
-
-    nextBtn.addEventListener('click', function() {
-        const totalPages = Math.max(
-            1,
-            Math.ceil(filteredRows.length / ROWS_PER_PAGE)
-        );
-
-        if (currentPage < totalPages) {
-            currentPage++;
-            render();
-        }
-    });
-
-    searchInput.addEventListener('input', applyFilters);
-    floorFilter.addEventListener('change', function() {
-        populateLocations();
-        applyFilters();
-    });
-    locationFilter.addEventListener('change', applyFilters);
-    powerFilter.addEventListener('change', applyFilters);
-    conditionFilter.addEventListener('change', applyFilters);
+    const submitFilters = function() {
+        const params = new URLSearchParams();
+        const values = {search: searchInput.value.trim(), floor: floorFilter.value, location: locationFilter.value, power: powerFilter.value, condition: conditionFilter.value};
+        Object.keys(values).forEach(function(key) { if (values[key] && values[key] !== 'all') params.set(key, values[key]); });
+        window.location.search = params.toString();
+    };
+    let searchTimer;
+    searchInput.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(submitFilters, 300); });
+    [floorFilter, locationFilter, powerFilter, conditionFilter].forEach(function(filter) { filter.addEventListener('change', submitFilters); });
 
     clearFilters.addEventListener('click', function() {
         searchInput.value = '';
         floorFilter.value = 'all';
-        populateLocations();
         locationFilter.value = 'all';
         powerFilter.value = 'all';
         conditionFilter.value = 'all';
 
-        applyFilters();
+        submitFilters();
     });
 
-    populateLocations();
-    render();
 });
 </script>
 

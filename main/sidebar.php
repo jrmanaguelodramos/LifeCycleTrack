@@ -7,10 +7,32 @@ $displayName = 'User';
 $userEmail = '';
 
 if (!empty($_SESSION['access_token'])) {
+    $sessionUser = $_SESSION['user'] ?? [];
+    $tokenFingerprint = hash('sha256', (string) $_SESSION['access_token']);
+    $profileCache = $_SESSION['sidebar_profile'] ?? [];
+    $cacheIsFresh = is_array($profileCache)
+        && ($profileCache['token'] ?? '') === $tokenFingerprint
+        && (int) ($profileCache['fetched_at'] ?? 0) > time() - 3600;
+
+    if ($cacheIsFresh) {
+        $displayName = (string) ($profileCache['display_name'] ?? 'User');
+        $userEmail = (string) ($profileCache['email'] ?? '');
+    } else {
+        $displayName = trim((string) (
+            $sessionUser['user_metadata']['display_name']
+            ?? $sessionUser['user_metadata']['full_name']
+            ?? $sessionUser['user_metadata']['name']
+            ?? ''
+        ));
+        $userEmail = (string) ($sessionUser['email'] ?? '');
+        if ($displayName === '') $displayName = $userEmail !== '' ? $userEmail : 'User';
+
     $supabaseUrl = rtrim($_ENV['SUPABASE_URL'] ?? getenv('SUPABASE_URL') ?: '', '/');
     $supabaseKey = $_ENV['SUPABASE_KEY'] ?? getenv('SUPABASE_KEY') ?: '';
 
-    if ($supabaseUrl !== '' && $supabaseKey !== '') {
+    // The login flow already stores Supabase's user response in the session.
+    // Only fetch a profile when that response is unavailable.
+    if (empty($sessionUser) && $supabaseUrl !== '' && $supabaseKey !== '' && function_exists('curl_init')) {
         $ch = curl_init($supabaseUrl . '/auth/v1/user');
 
         curl_setopt_array($ch, [
@@ -20,7 +42,8 @@ if (!empty($_SESSION['access_token'])) {
                 'Authorization: Bearer ' . $_SESSION['access_token'],
                 'Content-Type: application/json'
             ],
-            CURLOPT_TIMEOUT => 10
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 4
         ]);
 
         $response = curl_exec($ch);
@@ -47,14 +70,21 @@ if (!empty($_SESSION['access_token'])) {
             }
         }
     }
+
+        $_SESSION['sidebar_profile'] = [
+            'token' => $tokenFingerprint,
+            'display_name' => $displayName,
+            'email' => $userEmail,
+            'fetched_at' => time(),
+        ];
+    }
 }
 ?>
 
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <aside class="sidebar ">
 

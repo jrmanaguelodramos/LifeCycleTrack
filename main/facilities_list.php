@@ -49,12 +49,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $search = trim((string)($_GET['search'] ?? ''));
 $filterCondition = trim((string)($_GET['condition'] ?? ''));
-
-$facilities = facilities_list(
-    $pdo,
-    $search,
-    $filterCondition
-);
+$filterFloor = trim((string)($_GET['floor'] ?? ''));
+$facilityPage = facilities_list_page($pdo, $search, $filterCondition, $filterFloor, (int)($_GET['page'] ?? 1));
+$facilities = $facilityPage['rows'];
+$facilityQuery = ['search' => $search, 'condition' => $filterCondition, 'floor' => $filterFloor];
+$facilityPageUrl = static function (int $page) use ($facilityQuery): string {
+    return '?' . http_build_query(array_filter($facilityQuery, static fn($value) => $value !== '') + ['page' => $page]);
+};
 ?>
 
 <!DOCTYPE html>
@@ -120,6 +121,7 @@ $facilities = facilities_list(
                     <input
                         id="facilitySearch"
                         type="text"
+                        value="<?= e($search) ?>"
                         class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-10 pr-3 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300 shadow-sm focus:shadow"
                         placeholder="Search by name or id..." />
 
@@ -130,12 +132,12 @@ $facilities = facilities_list(
                 id="floorFilter"
                 class="h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                <option value="all">All Floors</option>
-                <option value="ground floor">Ground Floor</option>
-                <option value="1st floor">1st Floor</option>
-                <option value="2nd floor">2nd Floor</option>
-                <option value="3rd floor">3rd Floor</option>
-                <option value="4th floor">4th Floor</option>
+                <option value="all" <?= $filterFloor === '' ? 'selected' : '' ?>>All Floors</option>
+                <option value="ground floor" <?= strtolower($filterFloor) === 'ground floor' ? 'selected' : '' ?>>Ground Floor</option>
+                <option value="1st floor" <?= strtolower($filterFloor) === '1st floor' ? 'selected' : '' ?>>1st Floor</option>
+                <option value="2nd floor" <?= strtolower($filterFloor) === '2nd floor' ? 'selected' : '' ?>>2nd Floor</option>
+                <option value="3rd floor" <?= strtolower($filterFloor) === '3rd floor' ? 'selected' : '' ?>>3rd Floor</option>
+                <option value="4th floor" <?= strtolower($filterFloor) === '4th floor' ? 'selected' : '' ?>>4th Floor</option>
 
             </select>
 
@@ -145,10 +147,10 @@ $facilities = facilities_list(
                     id="conditionFilter"
                     class="w-28 h-9 px-2 text-sm text-gray-800 bg-white border border-slate-300 rounded-md focus:outline-none focus:border-[#155B92] cursor-pointer">
 
-                    <option value="all">All Conditions</option>
-                    <option value="good">Good</option>
-                    <option value="fair">Fair</option>
-                    <option value="poor">Poor</option>
+                    <option value="all" <?= $filterCondition === '' ? 'selected' : '' ?>>All Conditions</option>
+                    <option value="good" <?= strtolower($filterCondition) === 'good' ? 'selected' : '' ?>>Good</option>
+                    <option value="fair" <?= strtolower($filterCondition) === 'fair' ? 'selected' : '' ?>>Fair</option>
+                    <option value="poor" <?= strtolower($filterCondition) === 'poor' ? 'selected' : '' ?>>Poor</option>
 
                 </select>
 
@@ -247,22 +249,10 @@ $facilities = facilities_list(
 
         </div>
 
-        <div class="pagination">
-
-            <button type="button" class="pagination-btn">
-                <i class="fa-solid fa-chevron-left"></i>
-                Previous
-            </button>
-
-            <button type="button" class="pagination-number active">
-                1
-            </button>
-
-            <button type="button" class="pagination-btn">
-                Next
-                <i class="fa-solid fa-chevron-right"></i>
-            </button>
-
+        <div class="pagination" aria-label="Facility pages">
+            <a class="pagination-btn" href="<?= e($facilityPageUrl(max(1, $facilityPage['page'] - 1))) ?>" <?= $facilityPage['page'] <= 1 ? 'aria-disabled="true" tabindex="-1" style="opacity:.5;pointer-events:none"' : '' ?>>Previous</a>
+            <span>Page <?= (int)$facilityPage['page'] ?> of <?= (int)$facilityPage['total_pages'] ?> · <?= (int)$facilityPage['total'] ?> facilities</span>
+            <a class="pagination-btn" href="<?= e($facilityPageUrl(min($facilityPage['total_pages'], $facilityPage['page'] + 1))) ?>" <?= $facilityPage['page'] >= $facilityPage['total_pages'] ? 'aria-disabled="true" tabindex="-1" style="opacity:.5;pointer-events:none"' : '' ?>>Next</a>
         </div>
 
     </main>
@@ -300,169 +290,22 @@ $facilities = facilities_list(
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
-            const ROWS_PER_PAGE = 10;
-
             const searchInput = document.getElementById('facilitySearch');
             const conditionFilter = document.getElementById('conditionFilter');
             const floorFilter = document.getElementById('floorFilter');
             const clearFilters = document.getElementById('clearFilters');
 
-            const tbody = document.querySelector('.facility-table tbody');
-            const pagination = document.querySelector('.pagination');
-
-            const [prevBtn, nextBtn] =
-                pagination.querySelectorAll('.pagination-btn');
-
-            const allRows = Array.from(
-                tbody.querySelectorAll('tr')
-            );
-
-            let filteredRows = allRows.slice();
-            let currentPage = 1;
-
-            const emptyRow = document.createElement('tr');
-
-            emptyRow.innerHTML =
-                '<td colspan="5" style="text-align:center;padding:1rem;">No facilities found.</td>';
-
-            emptyRow.style.display = 'none';
-
-            tbody.appendChild(emptyRow);
-
-            function applyFilters() {
-
-                const query = searchInput.value.trim().toLowerCase();
-                const condition = conditionFilter.value.toLowerCase();
-                const floor = floorFilter.value.toLowerCase();
-
-                filteredRows = allRows.filter(function(row) {
-
-                    const id = row.cells[0].textContent.trim().toLowerCase();
-                    const name = row.cells[1].textContent.trim().toLowerCase();
-
-                    const rowFloor = (
-                        row.dataset.floor || row.cells[2].textContent
-                    ).trim().toLowerCase();
-
-                    const cond = row.querySelector('.condition');
-
-                    return (
-                        (id.includes(query) || name.includes(query)) &&
-                        (
-                            condition === 'all' ||
-                            (cond && cond.classList.contains(condition))
-                        ) &&
-                        (
-                            floor === 'all' ||
-                            rowFloor === floor
-                        )
-                    );
-                });
-
-                currentPage = 1;
-
-                render();
-            }
-
-            function render() {
-
-                const totalPages = Math.max(
-                    1,
-                    Math.ceil(filteredRows.length / ROWS_PER_PAGE)
-                );
-
-                if (currentPage > totalPages) {
-                    currentPage = totalPages;
-                }
-
-                const start = (currentPage - 1) * ROWS_PER_PAGE;
-
-                allRows.forEach(function(row) {
-                    row.style.display = 'none';
-                });
-
-                filteredRows
-                    .slice(start, start + ROWS_PER_PAGE)
-                    .forEach(function(row) {
-                        row.style.display = '';
-                    });
-
-                emptyRow.style.display =
-                    filteredRows.length === 0 ? '' : 'none';
-
-                renderPagination(totalPages);
-            }
-
-            function renderPagination(totalPages) {
-
-                pagination
-                    .querySelectorAll('.pagination-number')
-                    .forEach(function(button) {
-                        button.remove();
-                    });
-
-                for (let i = 1; i <= totalPages; i++) {
-
-                    const button = document.createElement('button');
-
-                    button.type = 'button';
-
-                    button.className =
-                        'pagination-number' +
-                        (i === currentPage ? ' active' : '');
-
-                    button.textContent = i;
-
-                    button.addEventListener('click', function() {
-                        currentPage = i;
-                        render();
-                    });
-
-                    pagination.insertBefore(button, nextBtn);
-                }
-
-                prevBtn.disabled = currentPage === 1;
-                nextBtn.disabled = currentPage === totalPages;
-
-                prevBtn.style.opacity =
-                    prevBtn.disabled ? '0.5' : '';
-
-                nextBtn.style.opacity =
-                    nextBtn.disabled ? '0.5' : '';
-
-                prevBtn.style.cursor =
-                    prevBtn.disabled ? 'not-allowed' : '';
-
-                nextBtn.style.cursor =
-                    nextBtn.disabled ? 'not-allowed' : '';
-            }
-
-            prevBtn.addEventListener('click', function() {
-
-                if (currentPage > 1) {
-                    currentPage--;
-                    render();
-                }
-
-            });
-
-            nextBtn.addEventListener('click', function() {
-
-                const totalPages = Math.max(
-                    1,
-                    Math.ceil(filteredRows.length / ROWS_PER_PAGE)
-                );
-
-                if (currentPage < totalPages) {
-                    currentPage++;
-                    render();
-                }
-
-            });
-
-            searchInput.addEventListener('input', applyFilters);
-            conditionFilter.addEventListener('change', applyFilters);
-            floorFilter.addEventListener('change', applyFilters);
+            const submitFilters = function() {
+                const params = new URLSearchParams();
+                if (searchInput.value.trim()) params.set('search', searchInput.value.trim());
+                if (conditionFilter.value !== 'all') params.set('condition', conditionFilter.value);
+                if (floorFilter.value !== 'all') params.set('floor', floorFilter.value);
+                window.location.search = params.toString();
+            };
+            let searchTimer;
+            searchInput.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(submitFilters, 300); });
+            conditionFilter.addEventListener('change', submitFilters);
+            floorFilter.addEventListener('change', submitFilters);
 
             clearFilters.addEventListener('click', function() {
 
@@ -470,11 +313,9 @@ $facilities = facilities_list(
                 floorFilter.value = 'all';
                 conditionFilter.value = 'all';
 
-                applyFilters();
+                submitFilters();
 
             });
-
-            render();
 
             const successToast =
                 document.getElementById('facility-success-toast');

@@ -21,11 +21,6 @@ function e($value): string
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
-function getCount(PDO $pdo, string $sql): int
-{
-    return (int) $pdo->query($sql)->fetchColumn();
-}
-
 function calculateScore(array $counts): int
 {
     $total = array_sum($counts);
@@ -41,37 +36,6 @@ function calculateScore(array $counts): int
     ) / $total;
 
     return (int) round($score);
-}
-
-function getConditionCounts(PDO $pdo, string $table): array
-{
-    $allowedTables = ['facilities', 'equipment'];
-    if (!in_array($table, $allowedTables, true)) {
-        throw new InvalidArgumentException('Invalid table.');
-    }
-
-    $counts = ['Good' => 0, 'Fair' => 0, 'Poor' => 0];
-
-    $stmt = $pdo->query(
-        "SELECT
-            CASE
-                WHEN LOWER(condition) = 'good' THEN 'Good'
-                WHEN LOWER(condition) = 'fair' THEN 'Fair'
-                WHEN LOWER(condition) = 'poor' THEN 'Poor'
-                ELSE NULL
-            END AS condition_name,
-            COUNT(*) AS total
-         FROM {$table}
-         GROUP BY condition_name"
-    );
-
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if ($row['condition_name'] !== null) {
-            $counts[$row['condition_name']] = (int) $row['total'];
-        }
-    }
-
-    return $counts;
 }
 
 $dashboardError = '';
@@ -90,25 +54,26 @@ $poorFacilities = [];
 
 try {
 
-    $totalFacilities = getCount(
-        $pdo,
-        "SELECT COUNT(*) FROM facilities"
-    );
+    $facilityStats = $pdo->query(
+        "SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'good') AS good,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'fair') AS fair,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'poor') AS poor
+         FROM public.facilities"
+    )->fetch(PDO::FETCH_ASSOC);
+    $equipmentStats = $pdo->query(
+        "SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'good') AS good,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'fair') AS fair,
+                COUNT(*) FILTER (WHERE LOWER(condition) = 'poor') AS poor
+         FROM public.equipment"
+    )->fetch(PDO::FETCH_ASSOC);
 
-    $totalEquipments = getCount(
-        $pdo,
-        "SELECT COUNT(*) FROM equipment"
-    );
-
-    $conditionAlerts = getCount(
-        $pdo,
-        "SELECT
-            (SELECT COUNT(*) FROM facilities WHERE LOWER(condition) = 'poor')
-          + (SELECT COUNT(*) FROM equipment  WHERE LOWER(condition) = 'poor')"
-    );
-
-    $facilitiesCounts = getConditionCounts($pdo, 'facilities');
-    $equipmentsCounts = getConditionCounts($pdo, 'equipment');
+    $totalFacilities = (int) $facilityStats['total'];
+    $totalEquipments = (int) $equipmentStats['total'];
+    $facilitiesCounts = ['Good' => (int)$facilityStats['good'], 'Fair' => (int)$facilityStats['fair'], 'Poor' => (int)$facilityStats['poor']];
+    $equipmentsCounts = ['Good' => (int)$equipmentStats['good'], 'Fair' => (int)$equipmentStats['fair'], 'Poor' => (int)$equipmentStats['poor']];
+    $conditionAlerts = $facilitiesCounts['Poor'] + $equipmentsCounts['Poor'];
 
     $facilitiesScore = calculateScore($facilitiesCounts);
     $equipmentsScore = calculateScore($equipmentsCounts);
