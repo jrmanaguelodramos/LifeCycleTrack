@@ -189,7 +189,8 @@ if (!empty($_SESSION['access_token'])) {
                 'trend.php',
                 'maintenance.php',
                 'downtime.php',
-                'lifecycle.php'
+                'lifecycle.php',
+                'anomaly.php'
             ];
             $isReportPage = in_array($currentPage, $reportPages);?>
 
@@ -236,6 +237,14 @@ if (!empty($_SESSION['access_token'])) {
                        class="<?= $currentPage == 'lifecycle.php' ? 'active' : '' ?>">
                         <i class="fa-solid fa-chart-pie"></i>
                         LifeCycle Score
+                    </a>
+                </li>
+
+                 <li>
+                    <a href="anomaly.php"
+                       class="<?= $currentPage == 'anomaly.php' ? 'active' : '' ?>">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i>
+                        Anomaly Detection
                     </a>
                 </li>
             </ul>

@@ -332,7 +332,7 @@ function lifecycleChart(int $score, array $counts): void
 </head>
 
 <!--bg-[#F4F7FB]-->
-<body>
+<body class="bg-[url('../img/img2.png')] bg-cover bg-center bg-no-repeat">
 
     <?php include __DIR__ . '/sidebar.php'; ?>
 

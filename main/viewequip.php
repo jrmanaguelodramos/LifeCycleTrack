@@ -413,17 +413,17 @@ $hours = isset($equipment['hours_per_day']) && $equipment['hours_per_day'] !== '
         class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/90 p-6"
         onclick="closeImageModal()">
 
-        <button type="button" onclick="closeImageModal()" class="absolute right-6 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full text-4xl text-white transition hover:bg-white/20 hover:text-gray-300"
-            aria-label="Close image preview">
+        <button type="button" onclick="closeImageModal()"  class="absolute right-6 top-5 z-10 flex h-10 w-10 items-center justify-center rounded-full text-4xl text-white transition hover:bg-white/20 hover:text-gray-300"
+         aria-label="Close image preview">
             &times;
         </button>
 
-        <img
-            id="modalImage"
-            src=""
-            alt=""
-            onclick="event.stopPropagation()"
-            style="
+       <img
+        id="modalImage"
+        src=""
+        alt=""
+        onclick="event.stopPropagation()"
+        style="
             width: auto !important;
             height: auto !important;
             max-width: 75vw !important;
@@ -431,7 +431,7 @@ $hours = isset($equipment['hours_per_day']) && $equipment['hours_per_day'] !== '
             object-fit: contain !important;
             display: block;
         "
-            class="rounded-lg shadow-2xl">
+        class="rounded-lg shadow-2xl">
 
     </div>
 
