@@ -118,8 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-function load_equipment_assessments(PDO $pdo): array
+function load_equipment_assessments(PDO $pdo, int $facilityId = 0): array
 {
+    $facilityFilter = $facilityId > 0 ? 'WHERE q.facility_id = :facility_id' : '';
     $sql = "
         SELECT
             q.id,
@@ -136,13 +137,20 @@ function load_equipment_assessments(PDO $pdo): array
                 q.remarks
             ) AS assessment_notes
         FROM equipment q
+        {$facilityFilter}
         ORDER BY q.id ASC
     ";
 
-    return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($facilityId > 0 ? ['facility_id' => $facilityId] : []);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$conditionAssets = load_equipment_assessments($pdo);
+$requestedFacilityId = filter_var($_GET['facility_id'] ?? null, FILTER_VALIDATE_INT) ?: 0;
+$conditionAssets = load_equipment_assessments($pdo, $requestedFacilityId);
+$requestedEquipmentId = filter_var($_GET['equipment_id'] ?? null, FILTER_VALIDATE_INT) ?: 0;
+$conditionRequestReference = substr(preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_GET['request_id'] ?? '')) ?? '', 0, 80);
+$maintainTrackAdminReturnUrl = trim((string) (getenv('MAINTAINTRACK_ADMIN_RETURN_URL') ?: ''));
 ?>
 
 <!DOCTYPE html>
@@ -174,6 +182,12 @@ $conditionAssets = load_equipment_assessments($pdo);
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
+        <?php if ($conditionRequestReference !== ''): ?>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:12px 16px;border:1px solid #cfe0ef;border-radius:10px;background:#f4f9fd;color:#24445f;">
+                <strong>MaintainTrack request <?= e($conditionRequestReference) ?> · LifeCycleTrack equipment assessment</strong>
+                <a id="maintainTrackReturnButton" href="<?= e($maintainTrackAdminReturnUrl) ?>" <?php if ($maintainTrackAdminReturnUrl === ''): ?>hidden<?php endif; ?> style="border-radius:8px;padding:9px 12px;background:#1767a8;color:#fff;font-weight:700;text-decoration:none;<?php if ($maintainTrackAdminReturnUrl === ''): ?>display:none;<?php endif; ?>">Return to MaintainTrack Admin</a>
+            </div>
+        <?php endif; ?>
         <div class="condition-layout flex w-full items-stretch gap-5">
             <div class="condition-left flex w-3/5 min-w-0 flex-col overflow-hidden">
                 <h1 class="text-3xl font-bold">Equipment Condition Assessment</h1>
@@ -372,6 +386,8 @@ $conditionAssets = load_equipment_assessments($pdo);
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            const requestedEquipmentId = <?= json_encode($requestedEquipmentId) ?>;
+            const conditionRequestReference = <?= json_encode($conditionRequestReference, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
             const table = document.querySelector(".condition-table");
             const searchInput = document.getElementById("searchInput");
             const conditionFilter = document.getElementById("conditionFilter");
@@ -454,6 +470,10 @@ $conditionAssets = load_equipment_assessments($pdo);
                 equipmentName.textContent = cells[1].textContent.trim();
                 panelCondition.textContent = "Current condition: " + condition;
                 notes.value = row.dataset.notes || "";
+                if (conditionRequestReference && !notes.value.includes(conditionRequestReference)) {
+                    const requestNote = "MaintainTrack request " + conditionRequestReference + " condition assessment.";
+                    notes.value = notes.value.trim() ? notes.value.trim() + "\n" + requestNote : requestNote;
+                }
                 equipStatus.value = row.dataset.status || "";
                 equipmentImage.src = row.dataset.image || "../img/logo.png";
 
@@ -470,6 +490,13 @@ $conditionAssets = load_equipment_assessments($pdo);
                 row.querySelector(".edit-button")?.addEventListener("click", () =>
                     openequipment(row));
             });
+
+            if (requestedEquipmentId) {
+                const target = rows.find(row => String(row.dataset.assetId) === String(requestedEquipmentId));
+                if (target) {
+                    openequipment(target);
+                }
+            }
 
             function getFilteredRows() {
                 const search = searchInput.value.trim().toLowerCase();
@@ -584,7 +611,7 @@ $conditionAssets = load_equipment_assessments($pdo);
                 setSaving(true);
 
                 try {
-                    const response = await fetch(window.location.pathname, {
+                    const response = await fetch(window.location.pathname + window.location.search, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -615,6 +642,11 @@ $conditionAssets = load_equipment_assessments($pdo);
                     renderTable();
 
                     showToast("success", "Equipment condition saved successfully.");
+                    const returnButton = document.getElementById("maintainTrackReturnButton");
+                    if (returnButton) {
+                        returnButton.hidden = false;
+                        returnButton.style.display = "inline-flex";
+                    }
                 } catch (error) {
                     showToast("danger", error.message);
                 } finally {

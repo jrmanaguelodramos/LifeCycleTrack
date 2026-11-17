@@ -42,7 +42,7 @@ function lifecycle_central_payload(array $row, string $entityType): array
     $row['basis'] = $row['basis'] ?? $row['cost_type'] ?? null;
     $row['schedule'] = $row['schedule'] ?? $row['usage_schedule'] ?? null;
     $allowed = [
-        'id','entity_type','asset_tag','name','brand','model','category','location','date_acquired',
+        'id','entity_type','asset_tag','name','brand','model','category','location','facility_id','date_acquired',
         'acquisition_year','is_estimated_year','condition','lifecycle_status','quantity','basis','cost',
         'schedule','hours_per_day','asset_type','power_source','retired_at','disposed_at','created_at','updated_at',
     ];
@@ -116,7 +116,12 @@ function lifecycle_central_flush(PDO $pdo, int $limit = 20): void
     if (!$config['enabled'] || $config['base_url'] === '' || $config['token'] === '' || !function_exists('curl_init')) {
         throw new RuntimeException('Central publisher configuration or cURL is unavailable');
     }
-    if (!str_starts_with($config['base_url'], 'https://')) throw new RuntimeException('Central API must use HTTPS');
+    $parts = parse_url($config['base_url']);
+    $localHttp = strtolower(trim((string) getenv('LOCAL_STAGING_ALLOW_HTTP'))) === 'true'
+        && is_array($parts)
+        && strtolower((string) ($parts['scheme'] ?? '')) === 'http'
+        && in_array(strtolower((string) ($parts['host'] ?? '')), ['127.0.0.1', 'localhost', '::1'], true);
+    if (!str_starts_with($config['base_url'], 'https://') && !$localHttp) throw new RuntimeException('Central API must use HTTPS');
 
     $workerId = gethostname() . ':' . getmypid() . ':' . bin2hex(random_bytes(4));
     $pdo->beginTransaction();

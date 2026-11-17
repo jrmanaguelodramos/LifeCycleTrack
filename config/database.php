@@ -15,6 +15,13 @@ if (!is_array($env)) {
     exit('Application configuration is invalid. Contact the system administrator.');
 }
 
+// Process variables allow an isolated local staging run without editing the
+// developer's normal .env file. Existing .env values remain the defaults.
+foreach (['DB_HOST', 'DB_HOSTADDR', 'DB_PORT', 'DB_DATABASE', 'DB_USERNAME', 'DB_PASSWORD', 'DB_SSLMODE'] as $key) {
+    $processValue = getenv($key);
+    if ($processValue !== false && $processValue !== '') $env[$key] = $processValue;
+}
+
 $required = ['DB_HOST', 'DB_USERNAME', 'DB_PASSWORD'];
 foreach ($required as $key) {
     if (!isset($env[$key]) || trim((string)$env[$key]) === '') {
@@ -43,7 +50,11 @@ $password = (string)$env['DB_PASSWORD'];
 
 try {
     $addressOption = $hostAddress !== '' ? ";hostaddr=$hostAddress" : '';
-    $dsn = "pgsql:host=$host$addressOption;port=$port;dbname=$dbname;sslmode=require;connect_timeout=5";
+    $sslMode = (string)($env['DB_SSLMODE'] ?? 'require');
+    if (!in_array($sslMode, ['require', 'verify-ca', 'verify-full', 'prefer', 'allow', 'disable'], true)) {
+        throw new RuntimeException('Invalid DB_SSLMODE value.');
+    }
+    $dsn = "pgsql:host=$host$addressOption;port=$port;dbname=$dbname;sslmode=$sslMode;connect_timeout=5";
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -61,7 +72,7 @@ try {
         }
         // Fall back to normal address selection if this network cannot reach
         // IPv4 directly but can reach the database through its configured DNS.
-        $fallbackDsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=require;connect_timeout=5";
+        $fallbackDsn = "pgsql:host=$host;port=$port;dbname=$dbname;sslmode=$sslMode;connect_timeout=5";
         $pdo = new PDO($fallbackDsn, $username, $password, $options);
     }
 

@@ -109,6 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (trim($_POST['room'] ?? '') === '') {
             throw new RuntimeException('Select an assigned room.');
         }
+        $facilityLookup = $pdo->prepare('SELECT id FROM public.facilities WHERE location = :floor AND name = :name LIMIT 1');
+        $facilityLookup->execute(['floor' => trim((string)$_POST['floor']), 'name' => trim((string)$_POST['room'])]);
+        $equipmentFacilityId = $facilityLookup->fetchColumn();
+        if ($equipmentFacilityId === false) throw new RuntimeException('The selected room no longer matches a LifeCycleTrack facility. Select it again.');
 
         extract($values, EXTR_SKIP);
 
@@ -232,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 category,
                 asset_type,
                 power_source,
+                facility_id,
                 location,
                 date_acquired,
                 acquisition_year,
@@ -254,6 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 :category,
                 :asset_type,
                 :power_source,
+                :facility_id,
                 :location,
                 :date_acquired,
                 :acquisition_year,
@@ -279,6 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'category' => $category,
             'asset_type' => $kind,
             'power_source' => $power_source,
+            'facility_id' => $equipmentFacilityId,
             'location' => $location,
             'date_acquired' => sprintf('%04d-01-01', $year),
             'acquisition_year' => $year,
@@ -297,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $equipmentId = (string) $stmt->fetchColumn();
         lifecycle_central_enqueue($pdo, lifecycle_central_payload([
             'id' => $equipmentId,
+            'facility_id' => (string) $equipmentFacilityId,
             'asset_tag' => $assetTag,
             'name' => $name,
             'brand' => $brand,

@@ -188,6 +188,7 @@ if (!empty($_SESSION['access_token'])) {
             $reportPages = [
                 'trend.php',
                 'maintenance.php',
+                'maintenance_outcomes.php',
                 'downtime.php',
                 'lifecycle.php',
                 'anomaly.php'
@@ -221,6 +222,14 @@ if (!empty($_SESSION['access_token'])) {
                        class="<?= $currentPage == 'maintenance.php' ? 'active' : '' ?>">
                         <i class="fa-solid fa-screwdriver-wrench"></i>
                         Maintenance Analysis
+                    </a>
+                </li>
+
+                <li>
+                    <a href="maintenance_outcomes.php"
+                       class="<?= $currentPage == 'maintenance_outcomes.php' ? 'active' : '' ?>">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                        MaintainTrack Outcomes
                     </a>
                 </li>
 

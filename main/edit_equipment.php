@@ -232,6 +232,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $location = $floor . ' - ' . $room;
+        $facilityLookup = $pdo->prepare('SELECT id FROM public.facilities WHERE location = :floor AND name = :name LIMIT 1');
+        $facilityLookup->execute(['floor' => $floor, 'name' => $room]);
+        $equipmentFacilityId = $facilityLookup->fetchColumn();
+        if ($equipmentFacilityId === false) throw new RuntimeException('The selected room no longer matches a LifeCycleTrack facility. Select it again.');
 
         if ($quantity === false || $quantity < 1) {
             throw new RuntimeException('Quantity must be at least 1.');
@@ -313,7 +317,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $update = $pdo->prepare(
                 'UPDATE public.equipment SET
-                    name = :name, category = :category,
+                    name = :name, category = :category, facility_id = :facility_id,
                     asset_type = :asset_type, power_source = :power_source,
                     brand = :brand, model = :model,
                     location = :location, quantity = :quantity,
@@ -326,6 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update->execute([
                 'name' => $name,
                 'category' => $category,
+                'facility_id' => $equipmentFacilityId,
                 'asset_type' => $assetType,
                 'power_source' => $powerSource,
                 'brand' => $brand !== '' ? $brand : null,
@@ -346,7 +351,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$check->fetchColumn()) throw new RuntimeException('Equipment not found.');
             }
 
-            $syncStmt = $pdo->prepare('SELECT id, asset_tag, name, brand, model, category, asset_type, power_source, location, date_acquired, acquisition_year, is_estimated_year, condition, status, acquisition_cost, cost_type, usage_schedule, hours_per_day, quantity, updated_at FROM public.equipment WHERE id = :id');
+            $syncStmt = $pdo->prepare('SELECT id, facility_id, asset_tag, name, brand, model, category, asset_type, power_source, location, date_acquired, acquisition_year, is_estimated_year, condition, status, acquisition_cost, cost_type, usage_schedule, hours_per_day, quantity, updated_at FROM public.equipment WHERE id = :id');
             $syncStmt->execute(['id' => $equipmentId]);
             $syncRow = $syncStmt->fetch();
             if (is_array($syncRow)) lifecycle_central_enqueue($pdo, lifecycle_central_payload($syncRow, 'equipment'));

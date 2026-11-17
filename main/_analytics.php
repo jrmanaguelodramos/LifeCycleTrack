@@ -12,6 +12,7 @@ function analytics_table_exists(PDO $pdo, string $table): bool
         'facility_condition_assessments',
         'equipment_condition_assessments',
         'maintenance_records',
+        'central_external_snapshots',
         'downtime_events',
         'lifecycle_events',
         'activity_log',

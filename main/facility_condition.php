@@ -118,8 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-function load_facility_assessments(PDO $pdo): array
+function load_facility_assessments(PDO $pdo, int $facilityId = 0): array
 {
+    $facilityFilter = $facilityId > 0 ? 'WHERE f.id = :facility_id' : '';
     $sql = "
         SELECT
             f.id,
@@ -136,13 +137,20 @@ function load_facility_assessments(PDO $pdo): array
                 f.remarks
             ) AS assessment_notes
         FROM facilities f
+        {$facilityFilter}
         ORDER BY f.id ASC
     ";
 
-    return $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($facilityId > 0 ? ['facility_id' => $facilityId] : []);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-$conditionAssets = load_facility_assessments($pdo);
+$requestedFacilityId = filter_var($_GET['facility_id'] ?? null, FILTER_VALIDATE_INT) ?: 0;
+$conditionAssets = load_facility_assessments($pdo, $requestedFacilityId);
+$conditionRequestReference = defined('MAINTAINTRACK_REQUEST_REFERENCE')
+    ? (string) MAINTAINTRACK_REQUEST_REFERENCE
+    : substr(preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_GET['request_id'] ?? '')) ?? '', 0, 80);
 ?>
 
 <!DOCTYPE html>
@@ -193,6 +201,12 @@ $conditionAssets = load_facility_assessments($pdo);
     <?php include 'sidebar.php'; ?>
 
     <main class="ml-64 p-8">
+        <?php if (defined('MAINTAINTRACK_CONDITION_CONTEXT')): ?>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;padding:12px 16px;border:1px solid #cfe0ef;border-radius:10px;background:#f4f9fd;color:#24445f;">
+                <strong>MaintainTrack request <?= e(MAINTAINTRACK_REQUEST_REFERENCE) ?> · LifeCycleTrack facility assessment</strong>
+                <a id="maintainTrackReturnButton" href="<?= e(MAINTAINTRACK_ADMIN_RETURN_URL) ?>" hidden style="display:none;border-radius:8px;padding:9px 12px;background:#1767a8;color:#fff;font-weight:700;text-decoration:none;">Return to MaintainTrack Admin</a>
+            </div>
+        <?php endif; ?>
         <div class="condition-layout flex w-full items-stretch gap-5">
 
             <div class="condition-left flex w-3/5 min-w-0 flex-col overflow-hidden">
@@ -511,6 +525,8 @@ $conditionAssets = load_facility_assessments($pdo);
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            const conditionRequestReference = <?= json_encode($conditionRequestReference, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+            const requestedFacilityId = <?= json_encode($requestedFacilityId) ?>;
             const table = document.querySelector(".condition-table");
             const searchInput = document.getElementById("searchInput");
             const conditionFilter = document.getElementById("conditionFilter");
@@ -613,6 +629,10 @@ $conditionAssets = load_facility_assessments($pdo);
                 panelCondition.textContent = "Current condition: " + condition;
 
                 notes.value = row.dataset.notes || "";
+                if (conditionRequestReference && !notes.value.includes(conditionRequestReference)) {
+                    const requestNote = "MaintainTrack request " + conditionRequestReference + " condition assessment.";
+                    notes.value = notes.value.trim() ? notes.value.trim() + "\n" + requestNote : requestNote;
+                }
                 equipStatus.value = row.dataset.status || "";
                 facilityImage.src = row.dataset.image || "../img/logo.png";
 
@@ -636,6 +656,11 @@ $conditionAssets = load_facility_assessments($pdo);
                     openFacility(row);
                 });
             });
+
+            if (requestedFacilityId) {
+                const target = rows.find(row => String(row.dataset.assetId) === String(requestedFacilityId));
+                if (target) openFacility(target);
+            }
 
             function getFilteredRows() {
                 const search = searchInput.value.trim().toLowerCase();
@@ -780,7 +805,7 @@ $conditionAssets = load_facility_assessments($pdo);
                 setSaving(true);
 
                 try {
-                    const response = await fetch(window.location.pathname, {
+                    const response = await fetch(window.location.pathname + window.location.search, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json"
@@ -813,6 +838,8 @@ $conditionAssets = load_facility_assessments($pdo);
 
                     renderTable();
                     showToast("success", "Facility condition saved successfully.");
+                    const returnButton = document.getElementById("maintainTrackReturnButton");
+                    if (returnButton) { returnButton.hidden = false; returnButton.style.display = "inline-flex"; }
                 } catch (error) {
                     showToast("danger", error.message);
                 } finally {

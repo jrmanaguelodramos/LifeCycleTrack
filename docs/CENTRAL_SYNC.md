@@ -4,8 +4,12 @@ LifeCycleTrack owns its equipment and facility rows. When enabled, creates and e
 
 ## Setup
 
-1. Apply `database/integration_foundation.sql` and `database/migration_central_outbox_worker.sql` in the LifeCycleTrack database. Run the older `database/central_sync_outbox.sql` first only if the outbox table does not yet exist.
+1. Apply `database/integration_foundation.sql`, `database/migration_central_outbox_worker.sql`, `database/migration_central_backfill.sql`, `database/migration_central_inbox.sql`, then `database/migration_utility_anomaly_inbox.sql` in the LifeCycleTrack database. Run the older `database/central_sync_outbox.sql` first only if the outbox table does not yet exist.
 2. Configure `CENTRAL_API_BASE_URL`, `CENTRAL_API_TOKEN`, `CENTRAL_API_TIMEOUT=8`, and `CENTRAL_API_ENABLED=true` in the LifeCycleTrack `.env`. The token must match `LIFECYCLETRACK_API_TOKEN` on the Central Server.
 3. Use a reachable Central Server LAN address, not `localhost` from another computer. Use HTTPS when sending bearer tokens over a network.
 
 The sender omits images and free-form remarks. HTTP 202 marks an outbox row delivered because Central has durably stored and routed the event. MaintainTrack later consumes its own inbox through the Central API proxy and acknowledges only after its local snapshot and processed-event record commit.
+
+## Bootstrap and incoming events
+
+Run `php scripts/backfill_central_assets.php 100` repeatedly until the facility and equipment checkpoints complete. To reconcile the full snapshot again, run `php scripts/backfill_central_assets.php 100 --reconcile`; this resets both checkpoints and re-enqueues current records through the ordinary event path. Run `php scripts/consume_central_inbox.php 10` on a recurring schedule to store utility and maintenance events in the read-only `central_external_snapshots` projection. Incoming events never update LifecycleTrack-owned asset rows.

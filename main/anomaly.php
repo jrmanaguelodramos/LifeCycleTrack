@@ -5,7 +5,7 @@ require_once __DIR__ . '/_analytics.php';
 require_once __DIR__ . '/../services/ai_integ.php';
 
 const ANOMALY_LIMIT = 20.0;
-const USE_SAMPLE_DATA = true;
+const USE_SAMPLE_DATA = false;
 
 $sampleBills = [
     'electricity' => [
@@ -73,22 +73,24 @@ foreach ($visibleKeys as $key) {
             fn($r) => $r['bill_date'] >= $fetchFrom && $r['bill_date'] <= $dateTo
         ));
     } else {
-        if (!analytics_table_exists($pdo, $cfg['table'])) {
-            $notices[] = [$cfg['label'] . ' bills are unavailable because the table "' . $cfg['table'] . '" was not found. Update $utilityConfig at the top of this file.', 'warning'];
+        if (!analytics_table_exists($pdo, 'central_external_snapshots')) {
+            $notices[] = [$cfg['label'] . ' bills are not available because the Central snapshot table is missing.', 'warning'];
             continue;
         }
         $sql = "
         SELECT
-            b.id,
-            CAST(b.{$cfg['date']} AS date) AS bill_date,
-            COALESCE(b.{$cfg['qty']}, 0) AS qty,
-            COALESCE(b.{$cfg['cost']}, 0) AS cost
-        FROM public.{$cfg['table']} b
-        WHERE CAST(b.{$cfg['date']} AS date) >= CAST(:date_from AS date)
-          AND CAST(b.{$cfg['date']} AS date) < (CAST(:date_to AS date) + INTERVAL '1 day')
-        ORDER BY bill_date DESC, b.id DESC
+            b.source_id AS id,
+            COALESCE(NULLIF(b.payload->>'billing_date','')::date, NULLIF(b.payload->>'billing_period_to','')::date, b.source_updated_at::date) AS bill_date,
+            COALESCE(NULLIF(b.payload->>'consumption','')::numeric, 0) AS qty,
+            COALESCE(NULLIF(b.payload->>'total_amount','')::numeric, 0) AS cost
+        FROM public.central_external_snapshots b
+        WHERE b.source_system='UtilityTrack' AND b.record_type='utility_bill' AND b.deleted_at IS NULL
+          AND b.payload->>'utility'=:utility
+          AND COALESCE(NULLIF(b.payload->>'billing_date','')::date, NULLIF(b.payload->>'billing_period_to','')::date, b.source_updated_at::date) >= CAST(:date_from AS date)
+          AND COALESCE(NULLIF(b.payload->>'billing_date','')::date, NULLIF(b.payload->>'billing_period_to','')::date, b.source_updated_at::date) < (CAST(:date_to AS date) + INTERVAL '1 day')
+        ORDER BY bill_date DESC, b.source_updated_at DESC
         ";
-        $result = analytics_query_or_empty($pdo, $sql, [':date_from' => $fetchFrom, ':date_to' => $dateTo]);
+        $result = analytics_query_or_empty($pdo, $sql, [':date_from' => $fetchFrom, ':date_to' => $dateTo, ':utility' => $key]);
         if (!$result['ok']) {
             $queryOk = false;
             $notices[] = [$cfg['label'] . ' bills could not be queried. Check the column names in $utilityConfig and the application logs.', 'error'];
@@ -105,7 +107,7 @@ foreach ($visibleKeys as $key) {
         $monthly[$key][$ym]['cost'] = ($monthly[$key][$ym]['cost'] ?? 0.0) + $cost;
         $bills[] = [
             'key' => $key,
-            'external_id' => $cfg['prefix'] . '-' . str_pad((string)$r['id'], 6, '0', STR_PAD_LEFT),
+            'external_id' => $cfg['prefix'] . '-' . (string)$r['id'],
             'date' => $date,
             'ym' => $ym,
             'qty' => $qty,
@@ -344,6 +346,37 @@ $aiLiCls = 'flex items-start gap-3 mb-2.5 px-3.5 py-3 bg-white border border-sla
     . '[counter-increment:step] before:content-[counter(step)] before:grid before:place-items-center before:shrink-0 before:w-6 before:h-6 '
     . 'before:rounded-full before:bg-[rgb(14,58,99)] before:text-white before:text-[.8rem] before:font-extrabold';
 
+$utilityTrackAnomalies = [];
+$utilityTrackAnomalyError = false;
+if (analytics_table_exists($pdo, 'central_external_snapshots')) {
+    $incoming = analytics_query_or_empty($pdo,
+        "SELECT source_id,payload,source_updated_at FROM public.central_external_snapshots
+          WHERE source_system='UtilityTrack' AND record_type='utility_anomaly' AND deleted_at IS NULL
+          ORDER BY source_updated_at DESC LIMIT 500");
+    $utilityTrackAnomalyError = !$incoming['ok'];
+    foreach ($incoming['rows'] as $snapshot) {
+        $payload = is_array($snapshot['payload'] ?? null) ? $snapshot['payload'] : json_decode((string)($snapshot['payload'] ?? '{}'), true);
+        if (!is_array($payload)) $payload = [];
+        $utility = strtolower((string)($payload['utility'] ?? ''));
+        if (!isset($utilityConfig[$utility]) || ($utilityFilter !== 'all' && $utility !== $utilityFilter)) continue;
+        $period = (string)($payload['current_period'] ?? '');
+        $periodDate = preg_match('/^\d{4}-\d{2}$/', $period) ? $period . '-01' : substr($period, 0, 10);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $periodDate)) {
+            $periodDate = substr((string)($payload['created_at'] ?? $snapshot['source_updated_at']), 0, 10);
+        }
+        if ($periodDate < $dateFrom || $periodDate > $dateTo) continue;
+        $haystack = implode(' ', [(string)$snapshot['source_id'], $period, (string)($payload['previous_period'] ?? ''), (string)($payload['cause'] ?? ''), (string)($payload['result'] ?? '')]);
+        if ($search !== '' && stripos($haystack, $search) === false) continue;
+        $utilityTrackAnomalies[] = [
+            'utility' => $utility, 'current_period' => $period, 'previous_period' => (string)($payload['previous_period'] ?? ''),
+            'pct_cons' => $payload['pct_cons'] ?? null, 'pct_cost' => $payload['pct_cost'] ?? null,
+            'pct_rate' => $payload['pct_rate'] ?? null, 'cause' => (string)($payload['cause'] ?? ''),
+            'status' => (string)($payload['status'] ?? 'Unknown'), 'result' => (string)($payload['result'] ?? ''),
+            'updated_at' => (string)$snapshot['source_updated_at'],
+        ];
+    }
+}
+
 analytics_page_start('Anomaly Analysis', 'Compare utility bills month over month to find unusual changes in consumption or cost.');
 ?>
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
@@ -460,6 +493,18 @@ foreach ($monthlyRows as $ym => $mr) {
         . ($isFlagged ? 'text-red-700 bg-red-100' : 'text-emerald-700 bg-emerald-100') . '">' . ($isFlagged ? 'Anomaly' : 'Normal') . '</span></td></tr>';
 }
 analytics_table_end();
+
+echo '<section class="analytics-panel table-panel"><div class="panel-heading"><h2>UtilityTrack reported anomalies</h2><p>Read-only anomaly findings received through Central from UtilityTrack, the authoritative source.</p></div>';
+if ($utilityTrackAnomalyError) analytics_notice('UtilityTrack anomaly snapshots could not be queried. Check the LifeCycleTrack inbox migration and database logs.', 'error');
+echo '<div class="table-scroll"><table><thead><tr><th>Utility</th><th>Current period</th><th>Previous period</th><th>Consumption change</th><th>Cost change</th><th>Rate change</th><th>Cause</th><th>Status</th><th>Result</th></tr></thead><tbody>';
+if (!$utilityTrackAnomalies) echo '<tr><td colspan="9" class="analytics-empty">No UtilityTrack anomaly records match these filters.</td></tr>';
+foreach ($utilityTrackAnomalies as $anomaly) {
+    $percent = static fn($value): string => $value === null ? '—' : number_format((float)$value, 1) . '%';
+    echo '<tr><td>' . e(ucfirst($anomaly['utility'])) . '</td><td>' . e($anomaly['current_period'] ?: '—') . '</td><td>' . e($anomaly['previous_period'] ?: '—') . '</td>'
+        . '<td>' . e($percent($anomaly['pct_cons'])) . '</td><td>' . e($percent($anomaly['pct_cost'])) . '</td><td>' . e($percent($anomaly['pct_rate'])) . '</td>'
+        . '<td>' . e($anomaly['cause'] ?: '—') . '</td><td>' . analytics_pill($anomaly['status']) . '</td><td>' . e($anomaly['result'] ?: '—') . '</td></tr>';
+}
+echo '</tbody></table></div></section>';
 
 $utilityChartLabels = array_map(fn($k) => $utilityConfig[$k]['label'], $visibleKeys);
 $utilityChartValues = array_map(fn($k) => round((float)$costByUtility[$k], 2), $visibleKeys);

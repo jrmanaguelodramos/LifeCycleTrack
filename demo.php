@@ -7,8 +7,6 @@ declare(strict_types=1);
 // $env = is_file($envFile)
 //     ? parse_ini_file($envFile, false, INI_SCANNER_RAW)
 //     : false;
-$token = 'maintenance_api_token_123';
-$endpoint = 'http://10.211.46.87:8000/api/v1/maintenance-work-orders.php';
 $result = null;
 $error = '';
 $httpStatus = null;
@@ -22,42 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'updated_at' => gmdate('Y-m-d\TH:i:s\Z'),
     ];
 
-    if ($token === '') {
-        $error = 'Add MAINTENANCE_API_TOKEN to LifeCycleTrack/.env before sending.';
-    } elseif (!function_exists('curl_init')) {
-        $error = 'PHP cURL is not enabled. Enable the cURL extension in XAMPP.';
-    } else {
-        $curl = curl_init($endpoint);
-        curl_setopt_array($curl, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_HTTPHEADER => [
-                'Accept: application/json',
-                'Content-Type: application/json',
-                'Authorization: Bearer ' . $token,
-            ],
-            CURLOPT_POSTFIELDS => json_encode($workOrder, JSON_UNESCAPED_SLASHES),
-        ]);
-
-        $responseBody = curl_exec($curl);
-        $httpStatus = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($curl);
-        curl_close($curl);
-
-        if ($responseBody === false) {
-            $error = 'Could not contact LifecycleTrack: ' . $curlError;
-        } else {
-            $result = json_decode($responseBody, true);
-            if (!is_array($result)) {
-                $error = 'LifecycleTrack returned a response that was not JSON.';
-            } elseif ($httpStatus < 200 || $httpStatus >= 300) {
-                $error = $result['error']['message'] ?? 'LifecycleTrack rejected the request.';
-            }
-        }
-    }
+    $error = 'Direct subsystem calls are disabled. Maintenance events must be published through the Central Server.';
 }
 
 function escapeHtml(string $value): string

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/_analytics.php';
 $hasMaintenance = analytics_table_exists($pdo, 'maintenance_records');
+$hasMaintainTrackSnapshots = analytics_table_exists($pdo, 'central_external_snapshots');
 $rows = [];
 $queryOk = true;
 if ($hasMaintenance) {
@@ -75,7 +76,9 @@ if ($hasMaintenance) {
         m.parts_cost,
         COALESCE(m.labor_cost, 0) + COALESCE(m.parts_cost, 0) AS total_cost,
         m.failure_cause,
-        m.created_at
+        m.created_at,
+        NULL::text AS completion_outcome,
+        'LifeCycleTrack'::text AS source_system
     FROM public.maintenance_records m
     LEFT JOIN public.equipment e ON e.id = m.equipment_id
     LEFT JOIN public.facilities f ON f.id = e.facility_id
@@ -95,6 +98,62 @@ if ($hasMaintenance) {
     $rows = $result['rows'];
     $queryOk = $result['ok'];
 }
+$externalResult = ['ok' => true, 'rows' => []];
+if ($hasMaintainTrackSnapshots) {
+    $externalWhere = [
+        "r.source_system='MaintainTrack'",
+        "r.record_type='maintenance_request'",
+        'r.deleted_at IS NULL',
+        "((NULLIF(r.payload->>'date_reported','')::timestamptz::date BETWEEN :mt_from AND :mt_to)
+          OR (NULLIF(r.payload->>'date_completed','')::timestamptz::date BETWEEN :mt_from2 AND :mt_to2)
+          OR (r.source_updated_at::date BETWEEN :mt_from3 AND :mt_to3))",
+    ];
+    $externalParams = [
+        ':mt_from' => $analyticsFrom, ':mt_to' => $analyticsTo,
+        ':mt_from2' => $analyticsFrom, ':mt_to2' => $analyticsTo,
+        ':mt_from3' => $analyticsFrom, ':mt_to3' => $analyticsTo,
+    ];
+    if ($analyticsType === 'equipment') $externalWhere[] = "(eq.id IS NOT NULL OR NULLIF(r.payload->>'external_equipment_id','') IS NOT NULL)";
+    elseif ($analyticsType === 'facility') $externalWhere[] = "(f.id IS NOT NULL OR NULLIF(r.payload->>'external_facility_id','') IS NOT NULL) AND NULLIF(r.payload->>'external_equipment_id','') IS NULL";
+    if ($analyticsCondition !== 'all') {
+        $externalWhere[] = 'COALESCE(eq.condition,f.condition)=:mt_condition';
+        $externalParams[':mt_condition'] = $analyticsCondition;
+    }
+    if ($analyticsSearch !== '') {
+        $externalWhere[] = "(COALESCE(eq.name,'') ILIKE :mt_q1 OR COALESCE(f.name,'') ILIKE :mt_q2 OR COALESCE(r.payload->>'external_equipment_name','') ILIKE :mt_q3 OR COALESCE(r.payload->>'external_facility_name','') ILIKE :mt_q4 OR COALESCE(r.payload->>'display_id','') ILIKE :mt_q5 OR COALESCE(r.payload->>'specific_area','') ILIKE :mt_q6 OR COALESCE(outcome.completion_outcome,'') ILIKE :mt_q7)";
+        foreach (range(1, 7) as $i) $externalParams[':mt_q' . $i] = '%' . $analyticsSearch . '%';
+    }
+    $externalSql = "SELECT r.source_id AS id, r.payload->>'display_id' AS external_id,
+            COALESCE(r.payload->>'display_id',r.source_id) AS work_order_code,
+            COALESCE(eq.asset_tag,'') AS external_asset_tag, NULL::bigint AS asset_id,
+            CASE WHEN NULLIF(r.payload->>'external_equipment_id','') IS NOT NULL OR eq.id IS NOT NULL THEN 'equipment'
+                 WHEN NULLIF(r.payload->>'external_facility_id','') IS NOT NULL OR f.id IS NOT NULL THEN 'facility' ELSE 'unknown' END AS asset_type,
+            COALESCE(eq.name,r.payload->>'external_equipment_name',f.name,r.payload->>'external_facility_name',r.payload->>'specific_area','MaintainTrack request') AS asset_name,
+            COALESCE(eq.location,f.location,r.payload->>'external_facility_name',r.payload->>'specific_area','—') AS location,
+            'Corrective'::text AS maintenance_type, COALESCE(r.payload->>'status','Unknown') AS status,
+            COALESCE(r.payload->>'priority','Medium') AS priority, NULL::timestamptz AS due_at,
+            NULLIF(r.payload->>'date_started','')::timestamptz AS started_at,
+            NULLIF(r.payload->>'date_completed','')::timestamptz AS completed_at,
+            NULL::numeric AS labor_cost, NULL::numeric AS parts_cost, NULL::numeric AS total_cost,
+            NULL::text AS failure_cause, COALESCE(NULLIF(r.payload->>'date_reported','')::timestamptz,r.source_updated_at) AS created_at,
+            outcome.completion_outcome, 'MaintainTrack'::text AS source_system
+        FROM public.central_external_snapshots r
+        LEFT JOIN public.equipment eq ON eq.id::text=r.payload->>'external_equipment_id'
+        LEFT JOIN public.facilities f ON f.id::text=r.payload->>'external_facility_id'
+        LEFT JOIN LATERAL (
+            SELECT u.payload->>'completion_outcome' AS completion_outcome
+            FROM public.central_external_snapshots u
+            WHERE u.source_system='MaintainTrack' AND u.record_type='maintenance_update'
+              AND u.deleted_at IS NULL AND u.payload->>'request_id'=r.source_id
+              AND lower(COALESCE(u.payload->>'status',''))='completed'
+            ORDER BY u.source_updated_at DESC LIMIT 1
+        ) outcome ON TRUE
+        WHERE " . implode(' AND ', $externalWhere) . "
+        ORDER BY r.source_updated_at DESC";
+    $externalResult = analytics_query_or_empty($pdo, $externalSql, $externalParams);
+    $rows = array_merge($rows, $externalResult['rows']);
+    $queryOk = $queryOk && $externalResult['ok'];
+}
 $types = ['Preventive', 'Corrective', 'Inspection', 'Other'];
 $typeValues = array_map(fn($t) => count(array_filter($rows, fn($r) => strcasecmp((string)$r['maintenance_type'], $t) === 0)), $types);
 $monthly = analytics_months($analyticsFrom, $analyticsTo);
@@ -111,7 +170,7 @@ $monthlyValues = array_map(fn($m) => $monthlyMap[$m['key']] ?? 0, $monthly);
 $today = new DateTimeImmutable('today');
 $open = array_filter($rows, fn($r) => !in_array(strtolower((string)$r['status']), ['completed', 'cancelled', 'closed'], true));
 $overdue = array_filter($open, fn($r) => !empty($r['due_at']) && new DateTimeImmutable((string)$r['due_at']) < $today);
-$statusLabels = ['Planned', 'Assigned', 'In Progress', 'Completed', 'Overdue', 'Cancelled'];
+$statusLabels = ['Pending', 'Planned', 'Assigned', 'In Progress', 'Completed', 'Fail to Fix', 'Overdue', 'Cancelled'];
 $statusValues = array_map(function ($label) use ($rows, $today) {
     return count(array_filter($rows, function ($r) use ($label, $today) {
         $isOpen = !in_array(strtolower((string)$r['status']), ['completed', 'cancelled', 'closed'], true);
@@ -134,7 +193,7 @@ $avgRepair = count($completedDurations) ? array_sum($completedDurations) / count
 
 analytics_page_start('Maintenance Analysis', 'Evaluate maintenance timeliness, backlog, work type, cost, and repair performance using linked maintenance-system records.');
 analytics_filter_form($analyticsFrom, $analyticsTo, $analyticsType, $analyticsCondition, $analyticsSearch);
-if (!$hasMaintenance) analytics_notice('Maintenance analytics are waiting for data integration. Run migrations/analytics_extensions.sql to create the reporting mirror, then sync work-order data from the Maintenance & Operations subsystem. This report does not invent sample maintenance records.', 'warning');
+if (!$hasMaintenance && !$hasMaintainTrackSnapshots) analytics_notice('Maintenance analytics are waiting for data integration. Run migrations/analytics_extensions.sql and enable the Central inbox snapshot migration.', 'warning');
 elseif (!$queryOk) analytics_notice('Maintenance records could not be queried. Check the database schema and application logs.', 'error');
 elseif (!$rows) analytics_notice('No maintenance records match these filters. Verify that the maintenance subsystem has synchronized records for this period.', 'info');
 if ($avgRepair !== null) analytics_notice('Mean recorded repair duration is ' . number_format($avgRepair, 1) . ' hours across completed work orders with both start and completion timestamps.', 'info');
@@ -150,13 +209,15 @@ analytics_chart_panel('Work order status', 'Distribution of linked records by cu
 analytics_chart_panel('Maintenance type', 'Preventive, corrective, and inspection work.', 'maintenanceTypeChart');
 analytics_chart_panel('Work order trend', 'Monthly records grouped by completion date, due date, or creation date.', 'maintenanceTrendChart', true);
 echo '</section>';
-analytics_table_start(['Work order', 'Asset / facility', 'Type', 'Priority', 'Due date', 'Status', 'Cost', 'Failure cause']);
-if (!$rows) echo '<tr><td colspan="8" class="analytics-empty">No maintenance records to display.</td></tr>';
+analytics_table_start(['Work order', 'Source', 'Asset / facility', 'Type', 'Priority', 'Due date', 'Status', 'Cost', 'Outcome / cause']);
+if (!$rows) echo '<tr><td colspan="9" class="analytics-empty">No maintenance records to display.</td></tr>';
 foreach ($rows as $r) {
     $code = $r['work_order_code'] ?: ($r['external_id'] ?: ('WO-' . $r['id']));
     $isOverdue = !in_array(strtolower((string)$r['status']), ['completed', 'cancelled', 'closed'], true) && !empty($r['due_at']) && new DateTimeImmutable((string)$r['due_at']) < $today;
     $status = $isOverdue ? 'Overdue' : (string)$r['status'];
-    echo '<tr><td>' . e((string)$code) . '</td><td>' . e((string)$r['asset_name']) . '<br><small>' . e((string)($r['external_asset_tag'] ?: $r['location'])) . '</small></td><td>' . e((string)$r['maintenance_type']) . '</td><td>' . analytics_pill((string)$r['priority']) . '</td><td>' . e(analytics_date_label($r['due_at'] ?? null)) . '</td><td>' . analytics_pill($status) . '</td><td>' . e(analytics_money((float)$r['total_cost'])) . '</td><td>' . e((string)($r['failure_cause'] ?: '—')) . '</td></tr>';
+    $outcome = trim((string)($r['completion_outcome'] ?? ''));
+    $cause = trim((string)($r['failure_cause'] ?? ''));
+    echo '<tr><td>' . e((string)$code) . '</td><td>' . e((string)($r['source_system'] ?? 'LifeCycleTrack')) . '</td><td>' . e((string)$r['asset_name']) . '<br><small>' . e((string)($r['external_asset_tag'] ?: $r['location'])) . '</small></td><td>' . e((string)$r['maintenance_type']) . '</td><td>' . analytics_pill((string)$r['priority']) . '</td><td>' . e(analytics_date_label($r['due_at'] ?? null)) . '</td><td>' . analytics_pill($status) . '</td><td>' . e(analytics_money((float)$r['total_cost'])) . '</td><td>' . e($outcome !== '' ? $outcome : ($cause !== '' ? $cause : '—')) . '</td></tr>';
 }
 analytics_table_end();
 ?>
@@ -181,7 +242,7 @@ analytics_table_end();
             labels: <?= analytics_json($statusLabels) ?>,
             datasets: [{
                 data: <?= analytics_json($statusValues) ?>,
-                backgroundColor: ['#94a3b8', '#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#cbd5e1'],
+                backgroundColor: ['#64748b', '#94a3b8', '#3b82f6', '#f59e0b', '#10b981', '#b42318', '#ef4444', '#cbd5e1'],
                 borderWidth: 0
             }]
         },

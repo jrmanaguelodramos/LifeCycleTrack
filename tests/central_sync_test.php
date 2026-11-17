@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/central_sync.php';
 
 $payload = lifecycle_central_payload([
     'id' => 42,
+    'facility_id' => 7,
     'name' => 'Generator',
     'brand' => 'Example',
     'condition' => 'Good',
@@ -16,7 +17,7 @@ $payload = lifecycle_central_payload([
     'remarks' => 'contains personal notes',
 ], 'equipment');
 
-if (($payload['id'] ?? null) !== '42' || ($payload['entity_type'] ?? '') !== 'equipment'
+if (($payload['id'] ?? null) !== '42' || ($payload['facility_id'] ?? null) !== 7 || ($payload['entity_type'] ?? '') !== 'equipment'
     || ($payload['lifecycle_status'] ?? '') !== 'Serviceable' || ($payload['cost'] ?? '') !== '12000.00'
     || ($payload['basis'] ?? '') !== 'Purchase' || ($payload['schedule'] ?? '') !== 'Daily'
     || isset($payload['image_url']) || isset($payload['remarks']) || empty($payload['source_updated_at'])) {

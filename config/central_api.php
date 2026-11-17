@@ -27,63 +27,8 @@ function lifecycle_central_config(): array
     return $config;
 }
 
-/** Best-effort, privacy-filtered push; a central outage never blocks local asset changes. */
+/** Deprecated compatibility hook. Active writes use central_sync.php's transactional outbox. */
 function lifecycle_central_sync_asset(string $entityType, array $record): void
 {
-    $config = lifecycle_central_config();
-    if (!$config['enabled'] || $config['base_url'] === '' || $config['token'] === '' || !function_exists('curl_init')) return;
-    if (!preg_match('#^https?://#i', $config['base_url'])) {
-        error_log('Central API asset sync skipped because CENTRAL_API_BASE_URL must use HTTP or HTTPS.');
-        return;
-    }
-    if (!in_array($entityType, ['equipment', 'facility'], true) || empty($record['id'])) return;
-
-    $payload = [
-        'id' => (string) $record['id'],
-        'entity_type' => $entityType,
-        'asset_tag' => $record['asset_tag'] ?? null,
-        'name' => $record['name'] ?? null,
-        'brand' => $record['brand'] ?? null,
-        'model' => $record['model'] ?? null,
-        'category' => $record['category'] ?? null,
-        'location' => $record['location'] ?? null,
-        'date_acquired' => $record['date_acquired'] ?? null,
-        'acquisition_year' => $record['acquisition_year'] ?? null,
-        'is_estimated_year' => $record['is_estimated_year'] ?? null,
-        'condition' => $record['condition'] ?? null,
-        'lifecycle_status' => $record['status'] ?? null,
-        'quantity' => $record['quantity'] ?? null,
-        'basis' => $record['cost_type'] ?? null,
-        'cost' => $record['acquisition_cost'] ?? null,
-        'schedule' => $record['usage_schedule'] ?? null,
-        'hours_per_day' => $record['hours_per_day'] ?? null,
-        'remarks' => $record['remarks'] ?? null,
-        'updated_at' => $record['updated_at'] ?? null,
-    ];
-    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-    if ($json === false) return;
-
-    $curl = curl_init($config['base_url'] . '/api/v1/ingest/lifecycle_asset');
-    $options = [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $json,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => $config['timeout'],
-        CURLOPT_CONNECTTIMEOUT => min(5, $config['timeout']),
-        CURLOPT_HTTPHEADER => [
-            'Authorization: Bearer ' . $config['token'],
-            'Content-Type: application/json',
-            'Accept: application/json',
-        ],
-    ];
-    if ($config['ca_info'] !== '') $options[CURLOPT_CAINFO] = $config['ca_info'];
-    curl_setopt_array($curl, $options);
-    curl_exec($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    $error = curl_error($curl);
-    curl_close($curl);
-
-    if ($status < 200 || $status >= 300) {
-        error_log('Central API asset sync failed (HTTP ' . $status . ')' . ($error !== '' ? ': ' . $error : '.'));
-    }
+    error_log('Deprecated direct Central sync hook ignored; enqueue lifecycle changes through config/central_sync.php.');
 }
