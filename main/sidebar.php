@@ -189,6 +189,7 @@ if (!empty($_SESSION['access_token'])) {
                 'trend.php',
                 'maintenance.php',
                 'maintenance_outcomes.php',
+                'utility_bills_report.php',
                 'downtime.php',
                 'lifecycle.php',
                 'anomaly.php'
@@ -230,6 +231,14 @@ if (!empty($_SESSION['access_token'])) {
                        class="<?= $currentPage == 'maintenance_outcomes.php' ? 'active' : '' ?>">
                         <i class="fa-solid fa-clipboard-check"></i>
                         MaintainTrack Outcomes
+                    </a>
+                </li>
+
+                <li>
+                    <a href="utility_bills_report.php"
+                       class="<?= $currentPage == 'utility_bills_report.php' ? 'active' : '' ?>">
+                        <i class="fa-solid fa-file-invoice-dollar"></i>
+                        Utility Bills Report
                     </a>
                 </li>
 

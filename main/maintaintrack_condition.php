@@ -25,10 +25,42 @@ function mtConditionB64UrlDecode(string $value): string|false
     return base64_decode($value, true);
 }
 
+function mtConditionRuntime(): array
+{
+    static $runtime = null;
+    if ($runtime !== null) return $runtime;
+    $path = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'SIA103_Central-Server' . DIRECTORY_SEPARATOR . '.local-staging' . DIRECTORY_SEPARATOR . 'runtime.json';
+    $decoded = is_file($path) ? json_decode((string)file_get_contents($path), true) : null;
+    $runtime = is_array($decoded) ? $decoded : [];
+    return $runtime;
+}
+
+function mtConditionSecret(): string
+{
+    $runtimeSecret = trim((string)(mtConditionRuntime()['api_tokens']['MAINTAINTRACK_CONDITION_HMAC_SECRET'] ?? ''));
+    if ($runtimeSecret !== '') return $runtimeSecret;
+    return trim((string)getenv('MAINTAINTRACK_CONDITION_HMAC_SECRET'));
+}
+
 function mtConditionExpectedReturnUrl(): string
 {
+    $host = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+    if (preg_match('/^(localhost|127\.0\.0\.1|\[::1\]):8082$/i', $host, $m)) {
+        return 'http://' . $m[1] . ':8083/pages/admin/admin_assignment.php';
+    }
+    // Local XAMPP layout: LifeCycleTrack is under the :80 document root,
+    // and MaintainTrack is served from its own :8080 document root.
+    if (preg_match('/^(localhost|127\.0\.0\.1)(?::80)?$/i', $host, $m)) {
+        return 'http://' . $m[1] . ':8080/pages/admin/admin_assignment.php';
+    }
+    if (preg_match('/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i', $host)) {
+        // Preserve the XAMPP port so the handoff returns to the same app origin.
+        return 'http://' . $host . '/MaintainTrack/pages/admin/admin_assignment.php';
+    }
     $configured = trim((string) (getenv('MAINTAINTRACK_ADMIN_RETURN_URL') ?: ''));
     if ($configured !== '') return $configured;
+    $runtimePort = (int)(mtConditionRuntime()['ports']['maintain'] ?? 0);
+    if ($runtimePort > 0) return 'http://127.0.0.1:' . $runtimePort . '/pages/admin/admin_assignment.php';
     if (strtolower(trim((string) getenv('LOCAL_STAGING_ALLOW_HTTP'))) === 'true') {
         return 'http://127.0.0.1:8083/pages/admin/admin_assignment.php';
     }
@@ -38,7 +70,7 @@ function mtConditionExpectedReturnUrl(): string
 function mtConditionConsumeHandoff(PDO $pdo): array
 {
     $token = trim((string) ($_GET['token'] ?? ''));
-    $secret = trim((string) getenv('MAINTAINTRACK_CONDITION_HMAC_SECRET'));
+    $secret = mtConditionSecret();
     if ($token === '' || $secret === '') throw new RuntimeException('This MaintainTrack assessment link is missing or expired. Reopen it from MaintainTrack Assignments.');
     $parts = explode('.', $token);
     if (count($parts) !== 2) throw new RuntimeException('Invalid MaintainTrack assessment link.');
@@ -52,12 +84,18 @@ function mtConditionConsumeHandoff(PDO $pdo): array
         || !in_array(($claims['entity'] ?? ''), ['equipment', 'facility'], true)
         || !preg_match('/^[0-9a-f-]{36}$/i', (string) ($claims['jti'] ?? ''))
         || !preg_match('/^[A-Za-z0-9_-]{1,80}$/', (string) ($claims['request_id'] ?? ''))
+        || (isset($claims['request_reference']) && !preg_match('/^[A-Za-z0-9_-]{1,80}$/', (string)$claims['request_reference']))
         || !ctype_digit((string) ($claims['asset_id'] ?? '')) || (int) $claims['asset_id'] < 1
         || !preg_match('/^[0-9a-f-]{36}$/i', (string) ($claims['admin_user_id'] ?? ''))
         || !filter_var((string) ($claims['return_url'] ?? ''), FILTER_VALIDATE_URL)
         || !hash_equals(mtConditionExpectedReturnUrl(), (string) ($claims['return_url'] ?? ''))) {
         throw new RuntimeException('This MaintainTrack assessment link is invalid or expired. Reopen it from MaintainTrack Assignments.');
     }
+
+    $usedTokens = $_SESSION['maintaintrack_condition_used_tokens'] ?? [];
+    if (!is_array($usedTokens)) $usedTokens = [];
+    foreach ($usedTokens as $usedId => $expiresAt) if ((int)$expiresAt < time()) unset($usedTokens[$usedId]);
+    if (isset($usedTokens[(string)$claims['jti']])) throw new RuntimeException('This MaintainTrack assessment link has already been used. Reopen it from MaintainTrack Assignments.');
 
     $entity = (string) $claims['entity'];
     $assetId = (int) $claims['asset_id'];
@@ -66,22 +104,23 @@ function mtConditionConsumeHandoff(PDO $pdo): array
     $check->execute(['id' => $assetId]);
     if (!$check->fetchColumn()) throw new RuntimeException('The referenced LifeCycleTrack record no longer exists.');
 
-    $pdo->beginTransaction();
-    try {
-        $pdo->exec("DELETE FROM public.maintaintrack_condition_access_tokens WHERE expires_at < now() - interval '1 day'");
-        $consume = $pdo->prepare('INSERT INTO public.maintaintrack_condition_access_tokens(token_id,request_id,entity_type,asset_id,admin_user_id,expires_at) VALUES(:token,:request,:entity,:asset,:admin,to_timestamp(:expires)) ON CONFLICT(token_id) DO NOTHING');
-        $consume->execute([
-            'token' => $claims['jti'], 'request' => $claims['request_id'], 'entity' => $entity,
-            'asset' => $assetId, 'admin' => $claims['admin_user_id'], 'expires' => (int) $claims['exp'],
-        ]);
-        if ($consume->rowCount() !== 1) throw new RuntimeException('This MaintainTrack assessment link has already been used. Reopen it from MaintainTrack Assignments.');
-        $pdo->commit();
-    } catch (Throwable $error) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $error;
-    }
-
+    $usedTokens[(string)$claims['jti']] = (int)$claims['exp'];
+    $_SESSION['maintaintrack_condition_used_tokens'] = $usedTokens;
     return $claims;
+}
+
+function mtConditionCreateReceipt(array $scope): ?string
+{
+    $secret = mtConditionSecret();
+    if ($secret === '' || !preg_match('/^[0-9a-f-]{36}$/i', (string)($scope['request_id'] ?? ''))
+        || !in_array(($scope['entity'] ?? ''), ['equipment','facility'], true)) return null;
+    $claims = [
+        'iss'=>'LifeCycleTrack','aud'=>'MaintainTrack','request_id'=>(string)$scope['request_id'],
+        'entity'=>(string)$scope['entity'],'asset_id'=>(string)$scope['asset_id'],
+        'admin_user_id'=>(string)$scope['admin_user_id'],'exp'=>time()+600,
+    ];
+    $encoded = rtrim(strtr(base64_encode(json_encode($claims, JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+    return $encoded . '.' . hash_hmac('sha256', $encoded, $secret);
 }
 
 session_start();
@@ -119,7 +158,7 @@ if (!is_array($scope) || (int) ($scope['session_expires_at'] ?? 0) < time()
 
 $entity = (string) $scope['entity'];
 $assetId = (int) $scope['asset_id'];
-$requestReference = (string) $scope['request_id'];
+$requestReference = (string) ($scope['request_reference'] ?? $scope['request_id']);
 $returnUrl = (string) $scope['return_url'];
 $adminLabel = trim((string) ($scope['admin_username'] ?? 'MaintainTrack Admin'));
 $table = $entity === 'equipment' ? 'equipment' : 'facilities';
@@ -159,7 +198,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activity = $pdo->prepare("INSERT INTO public.activity_log({$foreignKey},action,details,actor) VALUES(:id,'condition_assessment',:details,:actor)");
         $activity->execute(['id' => $assetId, 'details' => 'Condition: ' . $condition . '; Status: ' . $status . '; MaintainTrack request: ' . $requestReference, 'actor' => 'MaintainTrack Admin: ' . $adminLabel]);
         $pdo->commit();
-        mtConditionJson(200, ['ok' => true, 'condition' => $condition, 'status' => $status]);
+        mtConditionJson(200, ['ok' => true, 'condition' => $condition, 'status' => $status, 'condition_receipt'=>mtConditionCreateReceipt($scope)]);
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         error_log('MaintainTrack condition handoff failed: ' . $error->getMessage());
@@ -224,7 +263,13 @@ document.getElementById('conditionForm').addEventListener('submit', async event 
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.ok) throw new Error(result.message || 'Could not save the assessment.');
         button.hidden = true;
-        document.getElementById('returnToMaintainTrack').hidden = false;
+        const returnLink = document.getElementById('returnToMaintainTrack');
+        if (result.condition_receipt) {
+            const returnUrl = new URL(returnLink.href);
+            returnUrl.searchParams.set('condition_receipt', result.condition_receipt);
+            returnLink.href = returnUrl.toString();
+        }
+        returnLink.hidden = false;
         error.className = 'hint'; error.textContent = 'Assessment saved and recorded in LifeCycleTrack condition history.';
     } catch (e) {
         error.className = 'error'; error.textContent = e.message;
