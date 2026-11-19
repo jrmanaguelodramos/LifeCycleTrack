@@ -5,26 +5,9 @@ require_once __DIR__ . '/_analytics.php';
 require_once __DIR__ . '/../services/ai_integ.php';
 
 const ANOMALY_LIMIT = 20.0;
-const USE_SAMPLE_DATA = false;
+const USE_SAMPLE_DATA = true;
 
-$sampleBills = [
-    'electricity' => [
-        ['id' => 1, 'bill_date' => '2026-06-01', 'qty' => 320, 'cost' => 2300.00],
-        ['id' => 2, 'bill_date' => '2026-07-01', 'qty' => 310, 'cost' => 2170.00],
-        ['id' => 3, 'bill_date' => '2026-08-01', 'qty' => 335, 'cost' => 2500.00],
-        ['id' => 4, 'bill_date' => '2026-09-01', 'qty' => 300, 'cost' => 2032.00],
-        ['id' => 5, 'bill_date' => '2026-10-01', 'qty' => 330, 'cost' => 2241.60],
-        ['id' => 6, 'bill_date' => '2026-11-01', 'qty' => 405, 'cost' => 4000.00],
-    ],
-    'water' => [
-        ['id' => 1, 'bill_date' => '2026-06-01', 'qty' => 12.1, 'cost' => 430.00],
-        ['id' => 2, 'bill_date' => '2026-07-01', 'qty' => 12.8, 'cost' => 455.00],
-        ['id' => 3, 'bill_date' => '2026-08-01', 'qty' => 13.2, 'cost' => 470.00],
-        ['id' => 4, 'bill_date' => '2026-09-01', 'qty' => 12.5, 'cost' => 450.00],
-        ['id' => 5, 'bill_date' => '2026-11-01', 'qty' => 13.0, 'cost' => 470.00],
-        ['id' => 6, 'bill_date' => '2026-10-01', 'qty' => 13.0, 'cost' => 480.00],
-    ],
-];
+
 
 $utilityConfig = [
     'electricity' => ['label' => 'Electricity', 'prefix' => 'ELC', 'table' => 'electricity_bills', 'date' => 'billing_month', 'qty' => 'consumption', 'cost' => 'total_amount', 'unit' => 'kWh', 'decimals' => 0, 'color' => '#d98c10'],

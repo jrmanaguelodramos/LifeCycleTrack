@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 require_once __DIR__ . '/_app.php';
+require_once __DIR__ . '/_analytics.php';
+
 require_login();
 if (empty($_SESSION['access_token'])) {
   header('Location: ../auth/login.php');
@@ -44,6 +46,8 @@ try {
   <title>MaintainTrack Outcomes · LifeCycleTrack</title>
   <link rel="stylesheet" href="../dist/output.css">
   <link rel="stylesheet" href="../css/sidebar.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       background: #f3f6fa;
